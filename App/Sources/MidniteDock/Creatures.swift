@@ -7,11 +7,32 @@ final class ArmSim {
     var last: Date?
     var wants = false          // czy kursor jest w zasięgu (ramię ma się wysuwać)
     var extend: CGFloat = 0    // 0 = całkiem schowane w notchu, 1 = wysunięte
-    func advance(now: Date, target: CGPoint) {
+    var shoulderX: CGFloat = 0 // bark przesuwa się po notchu krokami (nie płynie za kursorem)
+    var patting = true         // pacanie: seria szybkich „klepnięć” w stronę kursora
+    var patStart: TimeInterval = 0
+
+    /// Początek klatki: wysuwanie/chowanie (wolne, żeby nie migało) i przesunięcie barku. Zwraca dt.
+    func beginFrame(now: Date, shoulderTarget: CGFloat) -> CGFloat {
         let dt = min(0.1, last.map { CGFloat(now.timeIntervalSince($0)) } ?? 1.0 / 60)
         last = now
-        extend += ((wants ? 1 : 0) - extend) * min(1, dt * 9)
+        extend += ((wants ? 1 : 0) - extend) * min(1, dt * (wants ? 3.6 : 2.6))
         if !wants && extend < 0.004 { extend = 0 }
+        shoulderX = extend < 0.08 ? shoulderTarget : shoulderX + (shoulderTarget - shoulderX) * min(1, dt * 7)
+        return dt
+    }
+
+    /// Kotek „wypacuje”: ok. 1,1 s cyklu: szybkie wyrzucenie łapki do przodu, chwila w bezruchu, powolny powrót.
+    func patFactor(at t: TimeInterval) -> CGFloat {
+        guard patting else { return 1 }
+        let ph = ((t - patStart) / 1.15).truncatingRemainder(dividingBy: 1)
+        let jab: Double
+        switch ph {
+        case ..<0.16: jab = ph / 0.16; case ..<0.30: jab = 1; default: let u = (ph - 0.30) / 0.70; jab = 1 - u * u * (3 - 2 * u)
+        }
+        return 0.66 + 0.34 * CGFloat(jab)
+    }
+
+    func step(dt: CGFloat, target: CGPoint) {
         let steps = max(1, min(3, Int((dt * 60).rounded(.up))))
         for _ in 0..<steps { spring.step(dt: dt / CGFloat(steps), target: target) }
     }
@@ -27,15 +48,18 @@ struct CreatureLayer: View {
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !state.armActive)) { tl in
             Canvas { ctx, size in
-                let shoulder = CGPoint(x: size.width / 2 + state.shoulderX, y: notch.height - 6)
-                let target = CGPoint(x: shoulder.x + state.tipX, y: shoulder.y + state.tipY)
-                if state.sim.last == nil { state.sim.spring = TipSpring(pos: CGPoint(x: shoulder.x, y: shoulder.y - 40)) }
-                state.sim.advance(now: tl.date, target: target)
-                let e = state.sim.extend
+                let sim = state.sim
+                let dt = sim.beginFrame(now: tl.date, shoulderTarget: state.shoulderX)
+                let shoulder = CGPoint(x: size.width / 2 + sim.shoulderX, y: notch.height - 6)
+                let k = sim.patFactor(at: tl.date.timeIntervalSinceReferenceDate)
+                let target = CGPoint(x: shoulder.x + state.tipX * k, y: shoulder.y + state.tipY * k)
+                if sim.extend < 0.08 { sim.spring = TipSpring(pos: CGPoint(x: shoulder.x, y: shoulder.y - 40)) }
+                sim.step(dt: dt, target: target)
+                let e = sim.extend
                 guard e > 0 else { return }            // całkiem schowana: nic nie rysujemy
                 let sc = notch.width / 220
                 let hide = (1 - e * e * (3 - 2 * e)) * (100 * sc + notch.height + 40)      // cała łapka wjeżdża w notch, nic nie wystaje
-                Self.draw(&ctx, shoulder: CGPoint(x: shoulder.x, y: shoulder.y - hide), tip: CGPoint(x: state.sim.spring.pos.x, y: state.sim.spring.pos.y - hide), scale: sc, notchH: notch.height - hide)
+                Self.draw(&ctx, shoulder: CGPoint(x: shoulder.x, y: shoulder.y - hide), tip: CGPoint(x: sim.spring.pos.x, y: sim.spring.pos.y - hide), scale: sc, notchH: notch.height - hide)
             }
         }
         .mask(alignment: .top) {

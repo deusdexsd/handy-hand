@@ -101,6 +101,7 @@ final class PanelController: NSObject {
     private var hovering = false
     private var frontmostWatched = false
     private var collapseWork: DispatchWorkItem?
+    private var retractWork: DispatchWorkItem?      // schowanie łapki z opóźnieniem (bez migania na granicy zasięgu)
     private var hideWork: DispatchWorkItem?
     private var bag = Set<AnyCancellable>()
     private(set) var expanded = false
@@ -284,10 +285,20 @@ final class PanelController: NSObject {
         switch effect {
         case .glow: if abs(g - state.glow) > 0.02 { state.glow = g }
         case .paw:
-            guard g > 0.02 else { if state.tipY > -30 { retractArm() }; return }
+            if g <= 0.02 {      // poza zasięgiem: chowamy dopiero po chwili (histereza, żeby nie migało na granicy)
+                if state.tipY > -30, retractWork == nil {
+                    let w = DispatchWorkItem { [weak self] in self?.retractWork = nil; self?.retractArm() }
+                    retractWork = w; DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: w)
+                }
+                return
+            }
+            guard g > 0.05 || state.armActive else { return }
+            retractWork?.cancel(); retractWork = nil
             // bark jeździ po notchu za kursorem (skrajny kursor = ramię wychodzi przy samej krawędzi notcha), dłoń celuje w kursor
             let sc = h.width / 220, maxOff = h.width / 2 - 30 * sc
-            state.shoulderX = max(-maxOff, min(maxOff, (p.x - h.midX) * 0.85))
+            let wantX = max(-maxOff, min(maxOff, (p.x - h.midX) * 0.85))
+            if !state.armActive || abs(wantX - state.shoulderX) > 34 * sc { state.shoulderX = wantX }      // bark „przeskakuje” krokami, nie płynie
+            if !state.sim.wants { state.sim.patStart = Date().timeIntervalSinceReferenceDate }
             let vx = p.x - (h.midX + state.shoulderX), vy = max(14, h.minY - p.y)
             let dist = hypot(vx, vy), reach = min(h.width * 0.42, max(h.width * 0.16, dist * 0.7)) * (0.55 + 0.45 * g)
             state.armActive = true; state.sim.wants = true
@@ -299,7 +310,7 @@ final class PanelController: NSObject {
     private func retractArm() {
         state.tipX = 0; state.tipY = -60; state.sim.wants = false          // wjeżdża w notch, bark zostaje tam, gdzie był
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            try? await Task.sleep(nanoseconds: 2_200_000_000)
             if state.tipY < -30 { state.armActive = false; state.sim.last = nil; state.sim.extend = 0 }      // schowana: zatrzymujemy symulację
         }
     }
@@ -452,7 +463,7 @@ enum SnapshotRunner {
             let shoulder = CGPoint(x: 200 + sh, y: 38 - 6)   // okno 400 pt, notch 220x38
             st.sim.spring = TipSpring(pos: CGPoint(x: shoulder.x + (jump ? 0 : tx), y: shoulder.y + (jump ? 80 : ty)))
             if jump { for _ in 0..<7 { st.sim.spring.step(dt: 1.0 / 60, target: CGPoint(x: shoulder.x + tx, y: shoulder.y + ty)) } }    // poza „w locie”
-            st.sim.wants = true; st.sim.extend = 1; st.sim.last = Date().addingTimeInterval(0.0001)
+            st.sim.wants = true; st.sim.extend = 1; st.sim.patting = false; st.sim.shoulderX = CGFloat(sh); st.sim.last = Date().addingTimeInterval(0.0001)
             await viewShot("09c-\(name)", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: st, glowColor: PanelController.glowColor(.violet), realNotch: true, anchorSize: CGSize(width: 220, height: 38), effect: .paw).frame(width: 400, height: 188).background(Color(white: 0.62)), 400, 188)
         }
         await settingsShot("10-set-general", GeneralTab(store: store))
