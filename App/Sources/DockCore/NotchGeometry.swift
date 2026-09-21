@@ -89,3 +89,11 @@ public enum NotchGlow {
         return t * t * (3 - 2 * t)      // smoothstep
     }
 }
+
+extension NotchGeometry {
+    /// Okno uchwytu przy prawdziwym notchu: sam notch powiększony o margines na poświatę (u góry równo z krawędzią ekranu).
+    public static func notchHandleFrame(_ m: ScreenMetrics, pad: CGFloat = 16) -> CGRect? {
+        guard let n = notchRect(m) else { return nil }
+        return CGRect(x: n.minX - pad, y: n.minY - pad, width: n.width + 2 * pad, height: n.height + pad)
+    }
+}

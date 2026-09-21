@@ -320,6 +320,14 @@ final class ExportGlowTests: XCTestCase {
         XCTAssertEqual(try FileManager.default.destinationOfSymbolicLink(atPath: out2.appendingPathComponent(plan[0].relative).path), f.path)
     }
 
+    func testRealNotchHandleFrameSitsOnTopEdgeWithGlowMargin() {
+        let m = GeometryTests().mbp
+        let h = NotchGeometry.notchHandleFrame(m)!
+        XCTAssertEqual(h, CGRect(x: 748, y: 1063, width: 232, height: 54))
+        XCTAssertEqual(h.maxY, m.frame.maxY)                       // górna krawędź równo z górą ekranu
+        XCTAssertNil(NotchGeometry.notchHandleFrame(GeometryTests().dell))
+    }
+
     func testGlowIntensityFallsOffSmoothly() {
         XCTAssertEqual(NotchGlow.intensity(distance: 0), 1)
         XCTAssertEqual(NotchGlow.intensity(distance: 26), 0)

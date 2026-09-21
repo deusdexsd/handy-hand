@@ -51,9 +51,21 @@ struct HandleView: View {
     let isPlaying: Bool
     @ObservedObject var state: PanelState
     let glowColor: Color
+    var realNotch = false
+    var notchSize = CGSize(width: 200, height: 32)
     var body: some View {
         let glow = expanded ? 0 : state.glow
-        if showsCap {
+        if realNotch {
+            // Prawdziwy notch: nic nie rysujemy w spoczynku. Poświata wychodzi zza czarnego kształtu równego notchowi
+            // (nad fizycznym notchem nie ma pikseli, więc sam kształt jest niewidoczny).
+            UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10, style: .continuous)
+                .fill(Color.black)
+                .frame(width: notchSize.width - 2, height: notchSize.height)
+                .shadow(color: glowColor.opacity(0.95 * glow), radius: 9)
+                .shadow(color: glowColor.opacity(0.65 * glow), radius: 3)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .animation(.easeOut(duration: 0.16), value: glow)
+        } else if showsCap {
             let shape = UnevenRoundedRectangle(topLeadingRadius: atBottom ? 12 : 0, bottomLeadingRadius: atBottom ? 0 : 12,
                                                bottomTrailingRadius: atBottom ? 0 : 12, topTrailingRadius: atBottom ? 12 : 0, style: .continuous)
             ZStack {
@@ -116,11 +128,12 @@ final class PanelController: NSObject {
         return NotchGeometry.preferredScreen(all, mouse: NSEvent.mouseLocation)
     }
 
-    private func frames() -> (handle: CGRect, body: CGRect, cap: Bool, bottom: Bool)? {
+    private func frames() -> (handle: CGRect, body: CGRect, cap: Bool, bottom: Bool, glowRect: CGRect, realNotch: Bool)? {
         guard let m = metrics() else { return nil }
         let s = store.settings
         let bodySize = CGSize(width: s.expandedWidth, height: s.expandedHeight)
-        let l = NotchGeometry.layout(m, placement: s.placement, mode: s.virtualNotch, windowWidth: bodySize.width)
+        let realNotchStyle = m.hasNotch && s.placement == .topCenter      // prawdziwy notch: bez wirtualnej wysepki i bez pigułki
+        let l = NotchGeometry.layout(m, placement: s.placement, mode: realNotchStyle ? .never : s.virtualNotch, windowWidth: bodySize.width)
         var hw = l.capSize.width, hh = l.capSize.height
         if !l.showsCap { hw = l.capSize.width + 40; hh = 8 }
         let bodyFrame0 = NotchGeometry.windowFrame(size: bodySize, layout: l, on: m)
@@ -132,6 +145,10 @@ final class PanelController: NSObject {
         }
         hx = max(m.frame.minX, min(hx, m.frame.maxX - hw))
         var handleFrame: CGRect, bodyFrame = bodyFrame0
+        if realNotchStyle, let n = NotchGeometry.notchRect(m), let hf = NotchGeometry.notchHandleFrame(m) {
+            bodyFrame.origin.y = n.minY - bodySize.height          // panel wisi tuż pod notchem
+            return (hf, bodyFrame, false, false, n, true)
+        }
         if l.atBottom {
             handleFrame = CGRect(x: hx, y: m.frame.minY, width: hw, height: hh)
             bodyFrame.origin.y = handleFrame.maxY + 6
@@ -143,12 +160,12 @@ final class PanelController: NSObject {
             handleFrame = CGRect(x: hx, y: top - hh, width: hw, height: hh)
             bodyFrame.origin.y = top - bodySize.height
         }
-        return (handleFrame, bodyFrame, l.showsCap, l.atBottom)
+        return (handleFrame, bodyFrame, l.showsCap, l.atBottom, handleFrame, false)
     }
 
     private func rebuildHandle() {
         guard let f = frames() else { return }
-        handle.contentView = NSHostingView(rootView: HandleView(showsCap: f.cap, atBottom: f.bottom, expanded: expanded, isPlaying: store.previewer.isPlaying, state: state, glowColor: Self.glowColor(store.settings.glowColor)))
+        handle.contentView = NSHostingView(rootView: HandleView(showsCap: f.cap, atBottom: f.bottom, expanded: expanded, isPlaying: store.previewer.isPlaying, state: state, glowColor: Self.glowColor(store.settings.glowColor), realNotch: f.realNotch, notchSize: f.glowRect.size))
         handle.setFrame(f.handle, display: true)
         state.atBottom = f.bottom
     }
@@ -241,10 +258,10 @@ final class PanelController: NSObject {
 
     /// Delikatne podświetlenie wysepki, gdy kursor zbliża się na kilka punktów.
     private func updateGlow() {
-        guard store.settings.notchGlow, !expanded, let h = frames()?.handle else { if state.glow != 0 { state.glow = 0 }; return }
+        guard store.settings.notchGlow, !expanded, let h = frames()?.glowRect else { if state.glow != 0 { state.glow = 0 }; return }
         let p = NSEvent.mouseLocation
         let dx = max(h.minX - p.x, 0, p.x - h.maxX), dy = max(h.minY - p.y, 0, p.y - h.maxY)
-        let g = NotchGlow.intensity(distance: hypot(dx, dy))
+        let g = NotchGlow.intensity(distance: hypot(dx, dy), radius: 34)
         if abs(g - state.glow) > 0.02 { state.glow = g }
     }
 
@@ -384,6 +401,7 @@ enum SnapshotRunner {
             rep.draw(in: NSRect(origin: .zero, size: hv.bounds.size)); img.unlockFocus()
             save(img, "\(dir)/\(name).png"); w.orderOut(nil)
         }
+        await viewShot("09b-handle-real-notch", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: { let st = PanelState(); st.glow = 0.9; return st }(), glowColor: PanelController.glowColor(.violet), realNotch: true, notchSize: CGSize(width: 220, height: 38)).frame(width: 252, height: 54).background(Color(white: 0.55)), 252, 54)
         await settingsShot("10-set-general", GeneralTab(store: store))
         await settingsShot("11-set-sources", SourcesTab(store: store))
         await settingsShot("12-set-appearance", AppearanceTab(store: store))
