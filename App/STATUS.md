@@ -1,6 +1,6 @@
-# MidniteDock: status MVP (21.09.2026, po pierwszym teście Davida)
+# Łapka (dawniej MidniteDock): status (21.09.2026)
 
-Aplikacja: `App/dist/MidniteDock.app` (release, ad-hoc podpis, aplikacja z paska menu, bez ikony w Docku).
+Aplikacja: `App/dist/Łapka.app` (release, ad-hoc podpis, aplikacja z paska menu, bez ikony w Docku).
 Dane użytkownika: `~/Library/Application Support/MidniteDock/` (`userdata.json`, `index.json`).
 Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`), bo się zmieni.
 
@@ -23,6 +23,9 @@ Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`), bo s
 | Skala waveformu | automatyczna: najdłuższy dźwięk w widoku (osobno SFX i muzyka) = pełna szerokość, podziałka czasu pod waveformem; opcja stałej skali | render + autotest |
 | Podgląd obrazów i wideo | mały pasek na dole (jak wcześniej); opcja „Większy podgląd” (strzałka w pasku albo Ustawienia → Ogólne): obraz/odtwarzacz 340×190 na dole panelu | render + autotest |
 | Miniatury | limit równoległych dekodowań, cache błędów (koniec pętli ponawiania), pasek podglądu odświeża się po wczytaniu | autotest |
+| Skróty w panelu | 1–4 filtr typu w bieżącej kategorii (mapowanie w Ustawieniach → Skróty; ponowne = zdejmuje), Shift+1–4 zmienia typ zaznaczonego dźwięku, 5 ulubione, 6 czyści filtry; spacja: dźwięk = odsłuch, obraz/wideo = większy podgląd | autotest |
+| Eksport | do folderu „Łapka – eksport”: układ Typ i długość albo Kolekcje; kopiuj albo dowiązania; nie nadpisuje | 2 testy |
+| Podświetlenie notcha | delikatna poświata (3 kolory), gdy kursor jest blisko; opcja wyłączana | test funkcji + render |
 | Układy | zapisane układy (kategoria + filtry + sortowanie + widok) jednym kliknięciem | testy |
 | Trwałość | zapis JSON tolerancyjny na brakujące klucze (aktualizacje nie kasują danych) | testy + autotest |
 | Wygląd | neutralny, jeden akcent (do wyboru), opcjonalne subtelne kolory źródeł, jasny/ciemny, natywny materiał (NSVisualEffectView), SF Symbols, sprężyny, reduce motion / reduce transparency | render |
@@ -33,6 +36,11 @@ Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`), bo s
 - prawdziwa mysz: najechanie, klik, spacja, drag z nowej aplikacji do FCP,
 - menu kontekstowe, dialogi (nowa kolekcja, tag, zapis układu),
 - wygląd na prawdziwym materiale tła (renderowałem na atrapie tła).
+
+## Odłożone / odrzucone
+
+- łapka wystająca z notcha w stronę kursora (wymaga narysowanej sylwetki i animacji; zostawione),
+- czarna dziura, sekwencje/compound przez FCPXML (odpuszczone), więcej kolorów (niepotrzebne).
 
 ## Jeszcze nie ma
 
