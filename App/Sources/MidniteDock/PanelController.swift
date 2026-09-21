@@ -53,6 +53,7 @@ struct HandleView: View {
     let glowColor: Color
     var realNotch = false
     var anchorSize = CGSize(width: 200, height: 32)      // rozmiar notcha / wysepki w środku przezroczystego okna
+    var side = 0                                         // -1 lewa krawędź, 1 prawa, 0 góra
     var effect: NotchEffect = .glow
 
     var body: some View {
@@ -67,11 +68,11 @@ struct HandleView: View {
                     .shadow(color: glowColor.opacity(0.65 * glow), radius: 3 + 6 * glow)
                     .animation(.easeOut(duration: 0.18), value: glow)
             } else if showsCap {
-                let shape = UnevenRoundedRectangle(topLeadingRadius: atBottom ? 12 : 0, bottomLeadingRadius: atBottom ? 0 : 12,
-                                                   bottomTrailingRadius: atBottom ? 0 : 12, topTrailingRadius: atBottom ? 12 : 0, style: .continuous)
+                let shape = UnevenRoundedRectangle(topLeadingRadius: side == 1 ? 12 : 0, bottomLeadingRadius: side == 1 || side == 0 ? 12 : 0,
+                                                   bottomTrailingRadius: side == -1 || side == 0 ? 12 : 0, topTrailingRadius: side == -1 ? 12 : 0, style: .continuous)
                 ZStack {
                     shape.fill(Color.black)
-                    RadialGradient(colors: [glowColor.opacity(0.55 * glow), .clear], center: atBottom ? .top : .bottom, startRadius: 0, endRadius: 110).clipShape(shape)
+                    RadialGradient(colors: [glowColor.opacity(0.55 * glow), .clear], center: side == -1 ? .leading : (side == 1 ? .trailing : .bottom), startRadius: 0, endRadius: 110).clipShape(shape)
                     shape.strokeBorder(glowColor.opacity(0.8 * glow), lineWidth: 1)
                     Image(systemName: "pawprint.fill").font(.system(size: 11))
                         .foregroundStyle(Color.white.opacity(expanded || isPlaying ? 0.55 : 0.22 + 0.5 * glow))
@@ -81,7 +82,7 @@ struct HandleView: View {
             } else {
                 Capsule().fill(Color.white.opacity(expanded ? 0 : 0.55)).frame(height: 4).padding(.horizontal, 20)
             }
-            if effect == .paw && !expanded && (realNotch || showsCap) {
+            if effect == .paw && !expanded && side == 0 && (realNotch || showsCap) {
                 CreatureLayer(notch: anchorSize, state: state)
             }
         }
@@ -139,43 +140,37 @@ final class PanelController: NSObject {
         guard let m = metrics() else { return nil }
         let s = store.settings
         let bodySize = CGSize(width: s.expandedWidth, height: s.expandedHeight)
-        let realNotchStyle = m.hasNotch && s.placement == .topCenter      // prawdziwy notch: bez wirtualnej wysepki i bez pigułki
-        let l = NotchGeometry.layout(m, placement: s.placement, mode: realNotchStyle ? .never : s.virtualNotch, windowWidth: bodySize.width)
+        if s.placement.isSide {      // uchwyt na lewej/prawej krawędzi, panel obok niego
+            let sf = NotchGeometry.sideFrames(m, placement: s.placement, position: s.sidePosition, bodySize: bodySize)
+            return (sf.handle, sf.body, true, false, sf.handle, false)
+        }
+        let realNotchStyle = m.hasNotch                                           // prawdziwy notch: bez wirtualnej wysepki i bez pigułki
+        let l = NotchGeometry.layout(m, placement: .topCenter, mode: realNotchStyle ? .never : s.virtualNotch, windowWidth: bodySize.width)
         var hw = l.capSize.width, hh = l.capSize.height
         if !l.showsCap { hw = l.capSize.width + 40; hh = 8 }
-        let bodyFrame0 = NotchGeometry.windowFrame(size: bodySize, layout: l, on: m)
-        var hx: CGFloat
-        switch s.placement {
-        case .topLeft: hx = bodyFrame0.minX
-        case .topRight: hx = bodyFrame0.maxX - hw
-        default: hx = l.horizontalAnchor - hw / 2
-        }
-        hx = max(m.frame.minX, min(hx, m.frame.maxX - hw))
-        var handleFrame: CGRect, bodyFrame = bodyFrame0
-        if realNotchStyle, let n = NotchGeometry.notchRect(m), let hf = NotchGeometry.notchHandleFrame(m) {
-            bodyFrame.origin.y = n.minY - bodySize.height          // panel wisi tuż pod notchem
-            _ = hf
+        var bodyFrame = NotchGeometry.windowFrame(size: bodySize, layout: l, on: m)
+        let hx = max(m.frame.minX, min(l.horizontalAnchor - hw / 2, m.frame.maxX - hw))
+        if realNotchStyle, let n = NotchGeometry.notchRect(m) {
+            bodyFrame.origin.y = n.minY - bodySize.height                          // panel wisi tuż pod notchem
             return (NotchGeometry.windowAround(n, side: 90, below: 150, screen: m.frame), bodyFrame, false, false, n, true)
         }
-        if l.atBottom {
-            handleFrame = CGRect(x: hx, y: m.frame.minY, width: hw, height: hh)
-            bodyFrame.origin.y = handleFrame.maxY + 6
-        } else if l.showsCap {
-            handleFrame = CGRect(x: hx, y: m.frame.maxY - hh, width: hw, height: hh)
-            bodyFrame.origin.y = handleFrame.minY - 6 - bodySize.height
-        } else {
-            let top = l.windowTopY ?? m.frame.maxY
-            handleFrame = CGRect(x: hx, y: top - hh, width: hw, height: hh)
-            bodyFrame.origin.y = top - bodySize.height
-        }
-        // Góra-środek z wysepką: przezroczyste okno wokół niej na poświatę i stworka (klikanie przechodzi przez nie).
-        let win = (l.showsCap && !l.atBottom && s.placement == .topCenter) ? NotchGeometry.windowAround(handleFrame, side: 90, below: 150, screen: m.frame) : handleFrame
-        return (win, bodyFrame, l.showsCap, l.atBottom, handleFrame, false)
+        let anchor: CGRect
+        if l.showsCap { anchor = CGRect(x: hx, y: m.frame.maxY - hh, width: hw, height: hh); bodyFrame.origin.y = anchor.minY - 6 - bodySize.height }
+        else { let top = l.windowTopY ?? m.frame.maxY; anchor = CGRect(x: hx, y: top - hh, width: hw, height: hh); bodyFrame.origin.y = top - bodySize.height }
+        // Przezroczyste okno wokół wysepki na poświatę i łapkę (klikanie przechodzi przez nie).
+        let win = l.showsCap ? NotchGeometry.windowAround(anchor, side: 90, below: 150, screen: m.frame) : anchor
+        return (win, bodyFrame, l.showsCap, false, anchor, false)
+    }
+
+    /// Na bocznych krawędziach łapka nie działa (tylko poświata).
+    private var activeEffect: NotchEffect {
+        let e = store.settings.notchEffect
+        return store.settings.placement.isSide && e == .paw ? .glow : e
     }
 
     private func rebuildHandle() {
         guard let f = frames() else { return }
-        handle.contentView = NSHostingView(rootView: HandleView(showsCap: f.cap, atBottom: f.bottom, expanded: expanded, isPlaying: store.previewer.isPlaying, state: state, glowColor: Self.glowColor(store.settings.glowColor), realNotch: f.realNotch, anchorSize: f.glowRect.size, effect: store.settings.notchEffect))
+        handle.contentView = NSHostingView(rootView: HandleView(showsCap: f.cap, atBottom: f.bottom, expanded: expanded, isPlaying: store.previewer.isPlaying, state: state, glowColor: Self.glowColor(store.settings.glowColor), realNotch: f.realNotch, anchorSize: f.glowRect.size, side: store.settings.placement == .leftMiddle ? -1 : (store.settings.placement == .rightMiddle ? 1 : 0), effect: activeEffect))
         handle.setFrame(f.handle, display: true)
         state.atBottom = f.bottom
     }
@@ -252,7 +247,11 @@ final class PanelController: NSObject {
     private func hotZone() -> NSRect {
         guard let f = frames(), let m = metrics() else { return .zero }
         var z = f.glowRect.insetBy(dx: -12, dy: -8)
-        if f.bottom { z.size.height += z.minY - m.frame.minY; z.origin.y = m.frame.minY } else { z.size.height += max(0, m.frame.maxY - z.maxY) }
+        switch store.settings.placement {      // strefa sięga do krawędzi ekranu, przy której siedzi uchwyt
+        case .leftMiddle: z.size.width += z.minX - m.frame.minX; z.origin.x = m.frame.minX
+        case .rightMiddle: z.size.width += max(0, m.frame.maxX - z.maxX)
+        case .topCenter: z.size.height += max(0, m.frame.maxY - z.maxY)
+        }
         if expanded { z = z.union(f.body.insetBy(dx: -10, dy: -10)) }
         return z
     }
@@ -276,7 +275,7 @@ final class PanelController: NSObject {
 
     /// Efekt przy notchu: poświata albo łapka reagują na odległość kursora (duże pole: ok. 140 pt od notcha).
     private func updateGlow() {
-        let effect = store.settings.notchEffect
+        let effect = activeEffect
         guard effect != .none, !expanded, let f = frames() else { resetEffect(); return }
         let h = f.glowRect
         let p = debugMouse ?? NSEvent.mouseLocation
@@ -447,14 +446,11 @@ enum SnapshotRunner {
             save(img, "\(dir)/\(name).png"); w.orderOut(nil)
         }
         await viewShot("09b-handle-real-notch", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: { let st = PanelState(); st.glow = 0.9; return st }(), glowColor: PanelController.glowColor(.violet), realNotch: true, anchorSize: CGSize(width: 220, height: 38)).frame(width: 252, height: 54).background(Color(white: 0.55)), 252, 54)
-        for (name, tx, ty, sh, jump) in [("paw-settled", 20.0, 80.0, 4.0, false), ("paw-swing", 55.0, 60.0, 8.0, true), ("paw-left", -45.0, 65.0, -8.0, false)] {
+        for (name, tx, ty, sh, jump) in [("paw-settled", 30.0, 80.0, 4.0, false), ("paw-swing", 55.0, 62.0, 8.0, true), ("paw-left", -60.0, 60.0, -8.0, false)] {
             let st = PanelState(); st.armActive = true; st.tipX = tx; st.tipY = ty; st.shoulderX = sh
             let shoulder = CGPoint(x: 200 + sh, y: 38 - 6)
-            st.sim.rope = RopeArm(shoulder: shoulder, length: 97); st.sim.last = Date()
-            if jump {   // poza „w locie”: ramię ustalone w dół, cel skacze w bok i kilka klatek później linia jeszcze dobiega
-                for _ in 0..<240 { st.sim.rope.step(dt: 1.0 / 60, shoulder: shoulder, target: CGPoint(x: shoulder.x, y: shoulder.y + 80)) }
-                for _ in 0..<7 { st.sim.rope.step(dt: 1.0 / 60, shoulder: shoulder, target: CGPoint(x: shoulder.x + tx, y: shoulder.y + ty)) }
-            } else { for _ in 0..<300 { st.sim.rope.step(dt: 1.0 / 60, shoulder: shoulder, target: CGPoint(x: shoulder.x + tx, y: shoulder.y + ty)) } }
+            st.sim.spring = TipSpring(pos: CGPoint(x: shoulder.x + (jump ? 0 : tx), y: shoulder.y + (jump ? 80 : ty)))
+            if jump { for _ in 0..<7 { st.sim.spring.step(dt: 1.0 / 60, target: CGPoint(x: shoulder.x + tx, y: shoulder.y + ty)) } }    // poza „w locie”
             st.sim.last = Date().addingTimeInterval(0.0001)
             await viewShot("09c-\(name)", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: st, glowColor: PanelController.glowColor(.violet), realNotch: true, anchorSize: CGSize(width: 220, height: 38), effect: .paw).frame(width: 400, height: 188).background(Color(white: 0.62)), 400, 188)
         }
@@ -635,14 +631,14 @@ enum SelfTest {
         store.settings.mode = .hover; store.settings.placement = .topCenter; store.settings.notchEffect = .paw; await wait(0.8)
         if let gr = controller.debugGlowRect() {
             controller.debugMouse = CGPoint(x: gr.midX + 70, y: gr.minY - 75); controller.debugUpdateEffect(); await wait(1.4)
-            print("SELF 31 łapka: cel=(\(Int(controller.state.tipX)),\(Int(controller.state.tipY))) aktywna=\(controller.state.armActive) koniec liny=(\(Int(controller.state.sim.rope.pts.last?.x ?? 0)),\(Int(controller.state.sim.rope.pts.last?.y ?? 0))) okno uchwytu=\(controller.debugState().split(separator: " ")[3])")
+            print("SELF 31 łapka: cel=(\(Int(controller.state.tipX)),\(Int(controller.state.tipY))) aktywna=\(controller.state.armActive) koniec łapki=(\(Int(controller.state.sim.spring.pos.x)),\(Int(controller.state.sim.spring.pos.y))) okno uchwytu=\(controller.debugState().split(separator: " ")[3])")
             SnapshotRunner.save(controller.handleSnapshot(), "/tmp/lapka-live-handle.png")
             controller.debugMouse = CGPoint(x: gr.midX + 900, y: gr.minY - 900); controller.debugUpdateEffect(); await wait(2.0)
             print("SELF 31b po odjechaniu: cel Y=\(Int(controller.state.tipY)) aktywna=\(controller.state.armActive)")
             controller.debugMouse = nil
         }
         // Zapis na dysk
-        store.settings.accent = .violet; store.settings.placement = .topRight
+        store.settings.accent = .violet; store.settings.placement = .rightMiddle
         store.newCollection(name: "Testowa"); store.flush()
         let onDisk = UserDataStore(url: AppInfo.dataDir.appendingPathComponent("userdata.json")).load()
         print("SELF 8 zapis: accent=\(onDisk.settings.accent.rawValue) placement=\(onDisk.settings.placement.rawValue) kolekcje=\(onDisk.org.collections.map(\.name))")

@@ -234,15 +234,15 @@ final class ResizeTests: XCTestCase {
     }
 
     func testBottomPlacementResizesFromTopEdge() {
-        XCTAssertEqual(PanelResize.newSize(start: start, dx: 0, dy: 60, edges: .init(top: true), placement: .bottomCenter, screen: screen).height, 520)
-        XCTAssertEqual(PanelResize.allowed(.init(top: true, bottom: true), placement: .bottomCenter), .init(top: true))
+        XCTAssertEqual(PanelResize.newSize(start: start, dx: 0, dy: 60, edges: .init(top: true), placement: .rightMiddle, screen: screen).height, 580)
+        XCTAssertEqual(PanelResize.allowed(.init(left: true, right: true), placement: .rightMiddle), .init(left: true))
         XCTAssertEqual(PanelResize.allowed(.init(top: true, bottom: true), placement: .topCenter), .init(bottom: true))
     }
 
     func testCornerAnchoredPanelsOnlyResizeAwayFromTheCorner() {
-        XCTAssertEqual(PanelResize.allowed(.init(left: true, right: true), placement: .topLeft), .init(right: true))
-        XCTAssertEqual(PanelResize.allowed(.init(left: true, right: true), placement: .topRight), .init(left: true))
-        XCTAssertEqual(PanelResize.newSize(start: start, dx: 40, dy: 0, edges: .init(right: true), placement: .topLeft, screen: screen).width, 760)   // 1:1, bez podwajania
+        XCTAssertEqual(PanelResize.allowed(.init(left: true, right: true), placement: .leftMiddle), .init(right: true))
+        XCTAssertEqual(PanelResize.allowed(.init(left: true, right: true), placement: .rightMiddle), .init(left: true))
+        XCTAssertEqual(PanelResize.newSize(start: start, dx: 40, dy: 0, edges: .init(right: true), placement: .leftMiddle, screen: screen).width, 760)   // 1:1, bez podwajania
     }
 
     func testClampedToMinimumAndScreen() {
@@ -426,6 +426,17 @@ final class RopeArmTests: XCTestCase {
     }
 }
 
+final class TipSpringTests: XCTestCase {
+    func testSpringOvershootsSlightlyThenSettles() {
+        var s = TipSpring(pos: .zero)
+        var maxX: CGFloat = 0
+        for _ in 0..<40 { s.step(dt: 1.0 / 60, target: CGPoint(x: 100, y: 0)); maxX = max(maxX, s.pos.x) }
+        XCTAssertGreaterThan(maxX, 103); XCTAssertLessThan(maxX, 125)          // lekkie przestrzelenie, nie „gumka”
+        for _ in 0..<200 { s.step(dt: 1.0 / 60, target: CGPoint(x: 100, y: 0)) }
+        XCTAssertEqual(s.pos.x, 100, accuracy: 0.5)
+    }
+}
+
 final class GeometryTests: XCTestCase {
     let mbp = ScreenMetrics(frame: CGRect(x: 0, y: 0, width: 1728, height: 1117), visibleFrame: CGRect(x: 0, y: 0, width: 1728, height: 1079),
                             safeAreaTop: 38, auxiliaryTopLeft: CGRect(x: 0, y: 1079, width: 764, height: 38),
@@ -459,14 +470,21 @@ final class GeometryTests: XCTestCase {
         XCTAssertEqual(NotchGeometry.windowFrame(size: size, layout: l, on: dell).maxY, 1662)
     }
 
-    func testCornersAndBottom() {
-        let left = NotchGeometry.windowFrame(size: size, layout: NotchGeometry.layout(dell, placement: .topLeft, mode: .auto, windowWidth: 720), on: dell)
-        XCTAssertEqual(left.minX, 16)
-        let right = NotchGeometry.windowFrame(size: size, layout: NotchGeometry.layout(dell, placement: .topRight, mode: .auto, windowWidth: 720), on: dell)
-        XCTAssertEqual(right.maxX, 3008 - 16)
-        let l = NotchGeometry.layout(dell, placement: .bottomCenter, mode: .auto, windowWidth: 720)
-        XCTAssertTrue(l.atBottom)
-        XCTAssertEqual(NotchGeometry.windowFrame(size: size, layout: l, on: dell).minY, 0)
+    func testSideHandlesSitOnTheEdgeAndPanelOpensBesideThem() {
+        let left = NotchGeometry.sideFrames(dell, placement: .leftMiddle, position: 0.5, bodySize: size)
+        XCTAssertEqual(left.handle.minX, 0); XCTAssertEqual(left.handle.midY, 846)          // środek ekranu (1692 / 2)
+        XCTAssertEqual(left.body.minX, left.handle.maxX + 6); XCTAssertEqual(left.body.midY, 846)
+        let right = NotchGeometry.sideFrames(dell, placement: .rightMiddle, position: 0.5, bodySize: size)
+        XCTAssertEqual(right.handle.maxX, 3008); XCTAssertEqual(right.body.maxX, right.handle.minX - 6)
+    }
+
+    func testSidePositionSliderAndClamping() {
+        let top = NotchGeometry.sideFrames(dell, placement: .leftMiddle, position: 0, bodySize: size)
+        XCTAssertEqual(top.handle.maxY, dell.frame.maxY)                                    // 0 = przy górze ekranu
+        XCTAssertLessThanOrEqual(top.body.maxY, dell.visibleFrame.maxY)                     // panel nie wychodzi poza ekran
+        let bottom = NotchGeometry.sideFrames(dell, placement: .rightMiddle, position: 1, bodySize: size)
+        XCTAssertEqual(bottom.handle.minY, dell.frame.minY)
+        XCTAssertGreaterThanOrEqual(bottom.body.minY, dell.visibleFrame.minY)
     }
 
     func testPreferredScreen() {
@@ -481,7 +499,7 @@ final class PersistenceTests: XCTestCase {
         let store = UserDataStore(url: url)
         XCTAssertTrue(store.load().sources.isEmpty)   // brak pliku = domyślne dane, bez crasha
         var u = UserData()
-        u.settings.placement = .topRight; u.settings.accent = .violet
+        u.settings.placement = .rightMiddle; u.settings.accent = .violet
         u.org.favorites = ["/a.wav"]; u.org.durationRanges.append(DurationRange(name: "Długie", kind: .audio, minSeconds: 10, maxSeconds: nil, shade: 1))
         u.org.presets = [Preset(name: "Whoosh krótkie", config: ViewConfig())]
         u.sources = [Source(name: "SFX", path: "/sfx", kind: .folder)]
@@ -495,7 +513,7 @@ final class PersistenceTests: XCTestCase {
         let json = "{\"settings\":{\"placement\":\"topRight\"},\"sources\":[{\"id\":\"" + sid + "\",\"name\":\"SFX\",\"path\":\"/sfx\",\"kind\":\"folder\"}],\"org\":{\"favorites\":[\"/a.wav\"]}}"
         try json.write(to: url, atomically: true, encoding: .utf8)
         let u = UserDataStore(url: url).load()
-        XCTAssertEqual(u.settings.placement, .topRight)
+        XCTAssertEqual(u.settings.placement, .rightMiddle)      // stary zapis „topRight” trafia na prawą krawędź
         XCTAssertEqual(u.settings.mode, .hover)
         XCTAssertEqual(u.sources.count, 1)
         XCTAssertEqual(u.org.favorites, ["/a.wav"])

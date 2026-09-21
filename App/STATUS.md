@@ -8,8 +8,8 @@ Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`), bo s
 
 | Obszar | Co | Jak sprawdzone |
 |---|---|---|
-| Panel | NSPanel nad oknami, tryby: po najechaniu / podążaj za aplikacją / przypięty; pozycje: góra-środek, lewy róg, prawy róg, dół; wirtualny notch (czarna wysepka) auto / zawsze / nigdy | autotest na prawdziwej geometrii ekranu, lista okien systemu |
-| Źródła | foldery i biblioteki FCP (czytane jak folder, tylko „Original Media”), symlinki rozwiązywane, obserwowanie zmian na żywo | 40 testów + autotest (plik dodany i usunięty widać w indeksie) |
+| Panel | NSPanel nad oknami, tryby: po najechaniu / podążaj za aplikacją / przypięty; pozycje: notch (góra-środek), prawa krawędź na środku, lewa krawędź na środku, z suwakiem położenia na bokach (Ustawienia); wirtualny notch (czarna wysepka) auto / zawsze / nigdy | autotest na prawdziwej geometrii ekranu, lista okien systemu |
+| Źródła | foldery i biblioteki FCP (czytane jak folder, tylko „Original Media”), symlinki rozwiązywane, obserwowanie zmian na żywo | 56 testów + autotest (plik dodany i usunięty widać w indeksie) |
 | Wizualizacje | waveform z prawdziwego pliku (Accelerate, cache na dysku), wspólna skala czasu, miniatura wideo, czas trwania na kaflu, odsłuch/podgląd (AVPlayer) | render widoków + autotest odtwarzania |
 | Organizacja | kolekcje własne, smart: przedziały długości (osobno audio i wideo, dowolnie dodawane, z odcieniem szarości), reguły po słowach, typ; ulubione, tagi | testy zapytań |
 | Wyszukiwanie i filtry | szukanie w bieżącej kategorii, filtry (typ, długość, data, tag) z widocznymi chipami i „Wyczyść”, sortowanie | testy + render |
@@ -25,7 +25,7 @@ Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`), bo s
 | Miniatury | limit równoległych dekodowań, cache błędów (koniec pętli ponawiania), pasek podglądu odświeża się po wczytaniu | autotest |
 | Skróty w panelu | 1–4 filtr typu w bieżącej kategorii (mapowanie w Ustawieniach → Skróty; ponowne = zdejmuje), Shift+1–4 zmienia typ zaznaczonego dźwięku, 5 ulubione, 6 czyści filtry; spacja: dźwięk = odsłuch, obraz/wideo = większy podgląd | autotest |
 | Eksport | do folderu „Łapka – eksport”: układ Typ i długość albo Kolekcje; kopiuj albo dowiązania; nie nadpisuje | 2 testy |
-| Efekt przy notchu | Ustawienia → Wygląd: Brak / Podświetlenie (3 kolory) / Łapka (domyślnie). Łapka wg filmu referencyjnego Davida: gruba, lekko zwężająca się trąba (31→23 pt przy notchu 220 pt) z pękiem pięciu palców, długość ok. 44% szerokości notcha, wychodzi prosto z notcha i wygina się „łokciem”; lina z fizyką (bezwładność, sprężyste dobieganie); reaguje TYLKO na kursor w promieniu ok. 105 pt (bez losowych wychyleń); kotek usunięty | 10 testów (IK, lina), renderowanie póz, test w prawdziwym oknie z symulowanym kursorem; **ruch na żywo niesprawdzony** |
+| Efekt przy notchu | Ustawienia → Wygląd: Brak / Podświetlenie (3 kolory) / Łapka (domyślnie). Łapka: SZTYWNE ramię (ok. 15% giętkości = lekkie sprężyste dobieganie), łokieć tuż przy notchu, przedramię i pęk pięciu palców skierowane w stronę kursora, grubość 31→25 pt przy notchu 220 pt; reaguje TYLKO na kursor w promieniu ok. 105 pt; na bocznych krawędziach działa tylko podświetlenie | testy (IK, sprężyna), renderowanie póz, test w prawdziwym oknie z symulowanym kursorem; **ruch na żywo niesprawdzony** |
 | Układy | zapisane układy (kategoria + filtry + sortowanie + widok) jednym kliknięciem | testy |
 | Trwałość | zapis JSON tolerancyjny na brakujące klucze (aktualizacje nie kasują danych) | testy + autotest |
 | Wygląd | neutralny, jeden akcent (do wyboru), opcjonalne subtelne kolory źródeł, jasny/ciemny, natywny materiał (NSVisualEffectView), SF Symbols, sprężyny, reduce motion / reduce transparency | render |
@@ -56,6 +56,6 @@ Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`), bo s
 cd Projects/MidniteDock/App
 ./package.sh        # release -> dist/MidniteDock.app
 ./dev-run.sh        # wersja deweloperska na danych testowych (osobny katalog danych)
-swift test --scratch-path ~/Library/Caches/MidniteDockBuild-App   # 40 testów
+swift test --scratch-path ~/Library/Caches/MidniteDockBuild-App   # 56 testów
 ```
 Zmienne środowiskowe dev: `MIDNITEDOCK_DATA_DIR`, `MIDNITEDOCK_DEV_MEDIA`, `MIDNITEDOCK_MUTE`, `MIDNITEDOCK_SHOTS=<katalog>` (renderuje stany do PNG), `MIDNITEDOCK_SELFTEST=1` (autotest logiki panelu).

@@ -8,10 +8,18 @@ public enum PanelMode: String, Codable, CaseIterable, Sendable {
 }
 
 public enum NotchPlacement: String, Codable, CaseIterable, Sendable {
-    case topCenter, topLeft, topRight, bottomCenter
+    case topCenter, rightMiddle, leftMiddle
     public var label: String {
-        switch self { case .topCenter: "Góra, środek (przy notchu)"; case .topLeft: "Góra, lewy róg"
-        case .topRight: "Góra, prawy róg"; case .bottomCenter: "Dół, środek" }
+        switch self { case .topCenter: "Notch (góra, środek)"; case .rightMiddle: "Prawa krawędź"; case .leftMiddle: "Lewa krawędź" }
+    }
+    public var isSide: Bool { self != .topCenter }
+    /// Stare zapisy (rogi, dół) nie mogą wywalić ustawień: rogi -> najbliższa krawędź, dół -> notch.
+    public init(from d: Decoder) throws {
+        switch try d.singleValueContainer().decode(String.self) {
+        case "rightMiddle", "topRight": self = .rightMiddle
+        case "leftMiddle", "topLeft": self = .leftMiddle
+        default: self = .topCenter
+        }
     }
 }
 
@@ -54,6 +62,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var mode: PanelMode = .hover
     public var watchedBundleIDs: [String] = ["com.apple.FinalCut"]
     public var placement: NotchPlacement = .topCenter
+    /// Położenie uchwytu na bocznej krawędzi: 0 = góra ekranu, 1 = dół.
+    public var sidePosition: Double = 0.5
     public var virtualNotch: VirtualNotchMode = .auto
     public var categoryLayout: CategoryLayout = .sidebar
     public var accent: AccentChoice = .system
@@ -74,7 +84,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var strictDuplicates: Bool = false
     public init() {}
 
-    enum CodingKeys: String, CodingKey { case autoplayOnSelect, waveformAutoScale, bigMediaPreview, quickKeys, notchGlow, notchEffect, glowColor, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
+    enum CodingKeys: String, CodingKey { case sidePosition, autoplayOnSelect, waveformAutoScale, bigMediaPreview, quickKeys, notchGlow, notchEffect, glowColor, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
     /// Tolerancyjne dekodowanie: brakujący klucz (np. po aktualizacji) = wartość domyślna, a nie utrata ustawień.
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -82,6 +92,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         mode = try c.decodeIfPresent(PanelMode.self, forKey: .mode) ?? def.mode
         watchedBundleIDs = try c.decodeIfPresent([String].self, forKey: .watchedBundleIDs) ?? def.watchedBundleIDs
         placement = try c.decodeIfPresent(NotchPlacement.self, forKey: .placement) ?? def.placement
+        sidePosition = min(1, max(0, try c.decodeIfPresent(Double.self, forKey: .sidePosition) ?? def.sidePosition))
         virtualNotch = try c.decodeIfPresent(VirtualNotchMode.self, forKey: .virtualNotch) ?? def.virtualNotch
         categoryLayout = try c.decodeIfPresent(CategoryLayout.self, forKey: .categoryLayout) ?? def.categoryLayout
         accent = try c.decodeIfPresent(AccentChoice.self, forKey: .accent) ?? def.accent

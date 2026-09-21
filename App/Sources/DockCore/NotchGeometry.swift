@@ -55,14 +55,8 @@ public enum NotchGeometry {
             if cap { return NotchLayout(showsCap: true, capSize: capSize, atBottom: false, horizontalAnchor: x, windowTopY: m.frame.maxY, windowBottomY: nil) }
             let top = m.hasNotch ? m.frame.maxY - m.safeAreaTop : m.visibleFrame.maxY
             return NotchLayout(showsCap: false, capSize: capSize, atBottom: false, horizontalAnchor: x, windowTopY: top, windowBottomY: nil)
-        case .topLeft:
-            return NotchLayout(showsCap: true, capSize: capSize, atBottom: false, horizontalAnchor: m.frame.minX + margin + windowWidth / 2,
-                               windowTopY: m.frame.maxY, windowBottomY: nil)
-        case .topRight:
-            return NotchLayout(showsCap: true, capSize: capSize, atBottom: false, horizontalAnchor: m.frame.maxX - margin - windowWidth / 2,
-                               windowTopY: m.frame.maxY, windowBottomY: nil)
-        case .bottomCenter:
-            return NotchLayout(showsCap: true, capSize: capSize, atBottom: true, horizontalAnchor: m.frame.midX, windowTopY: nil, windowBottomY: m.frame.minY)
+        case .rightMiddle, .leftMiddle:     // boczne: liczone w sideFrames
+            return NotchLayout(showsCap: true, capSize: capSize, atBottom: false, horizontalAnchor: m.frame.midX, windowTopY: m.frame.maxY, windowBottomY: nil)
         }
     }
 
@@ -102,5 +96,21 @@ extension NotchGeometry {
         var r = CGRect(x: anchor.minX - side, y: anchor.minY - below, width: anchor.width + 2 * side, height: anchor.height + below)
         r.origin.x = max(screen.minX, min(r.minX, screen.maxX - r.width))
         return r
+    }
+}
+
+extension NotchGeometry {
+    public static let sideHandleSize = CGSize(width: 22, height: 120)
+
+    /// Uchwyt na bocznej krawędzi (pozycja 0...1 od góry) i panel obok niego, wyśrodkowany względem uchwytu i mieszczący się na ekranie.
+    public static func sideFrames(_ m: ScreenMetrics, placement: NotchPlacement, position: Double, bodySize: CGSize,
+                                  handleSize: CGSize = sideHandleSize, gap: CGFloat = 6) -> (handle: CGRect, body: CGRect) {
+        let cy = m.frame.maxY - CGFloat(min(1, max(0, position))) * m.frame.height
+        let hy = max(m.frame.minY, min(cy - handleSize.height / 2, m.frame.maxY - handleSize.height))
+        let hx = placement == .leftMiddle ? m.frame.minX : m.frame.maxX - handleSize.width
+        let handle = CGRect(x: hx, y: hy, width: handleSize.width, height: handleSize.height)
+        let bx = placement == .leftMiddle ? handle.maxX + gap : handle.minX - gap - bodySize.width
+        let by = max(m.visibleFrame.minY, min(handle.midY - bodySize.height / 2, m.visibleFrame.maxY - bodySize.height))
+        return (handle, CGRect(x: bx, y: by, width: bodySize.width, height: bodySize.height))
     }
 }

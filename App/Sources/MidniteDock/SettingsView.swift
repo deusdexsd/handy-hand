@@ -41,6 +41,9 @@ struct GeneralTab: View {
             }
             Section("Notch") {
                 Picker("Położenie", selection: $store.data.settings.placement) { ForEach(NotchPlacement.allCases, id: \.self) { Text($0.label).tag($0) } }
+                if store.settings.placement.isSide {
+                    LabeledContent("Położenie na krawędzi") { HStack { Text("góra").font(.caption).foregroundStyle(.secondary); Slider(value: $store.data.settings.sidePosition, in: 0...1); Text("dół").font(.caption).foregroundStyle(.secondary) }.frame(width: 240) }
+                }
                 Picker("Wirtualny notch", selection: $store.data.settings.virtualNotch) { ForEach(VirtualNotchMode.allCases, id: \.self) { Text($0.label).tag($0) } }
                 Text("Wirtualny notch to czarna wysepka na górze ekranu. Przydaje się na monitorze zewnętrznym; poza górnym środkiem jest używany zawsze.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -124,7 +127,7 @@ struct AppearanceTab: View {
                 if store.settings.notchEffect == .glow {
                     Picker("Kolor poświaty", selection: $store.data.settings.glowColor) { ForEach(GlowChoice.allCases, id: \.self) { Text($0.label).tag($0) } }.pickerStyle(.segmented)
                 }
-                Text("Łapka wychyla się spod notcha w stronę kursora, gdy jest blisko (ok. 140 pt), a czasem sama macha, gdy nikogo nie ma. Działa przy górnym środku ekranu. Symulacja chodzi tylko, gdy łapka jest widoczna; „Brak” nie zużywa nic.")
+                Text("Łapka wychyla się spod notcha w stronę kursora, gdy jest blisko (ok. 140 pt), a czasem sama macha, gdy nikogo nie ma. Łapka działa tylko przy notchu (górny środek); na bocznych krawędziach jest podświetlenie. Symulacja chodzi tylko, gdy łapka jest widoczna; „Brak” nie zużywa nic.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Waveform") {
