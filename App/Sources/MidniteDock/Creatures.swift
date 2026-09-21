@@ -5,9 +5,13 @@ import DockCore
 final class ArmSim {
     var spring = TipSpring(pos: .zero)
     var last: Date?
+    var wants = false          // czy kursor jest w zasięgu (ramię ma się wysuwać)
+    var extend: CGFloat = 0    // 0 = całkiem schowane w notchu, 1 = wysunięte
     func advance(now: Date, target: CGPoint) {
-        let dt = last.map { CGFloat(now.timeIntervalSince($0)) } ?? 1.0 / 60
+        let dt = min(0.1, last.map { CGFloat(now.timeIntervalSince($0)) } ?? 1.0 / 60)
         last = now
+        extend += ((wants ? 1 : 0) - extend) * min(1, dt * 9)
+        if !wants && extend < 0.004 { extend = 0 }
         let steps = max(1, min(3, Int((dt * 60).rounded(.up))))
         for _ in 0..<steps { spring.step(dt: dt / CGFloat(steps), target: target) }
     }
@@ -27,7 +31,11 @@ struct CreatureLayer: View {
                 let target = CGPoint(x: shoulder.x + state.tipX, y: shoulder.y + state.tipY)
                 if state.sim.last == nil { state.sim.spring = TipSpring(pos: CGPoint(x: shoulder.x, y: shoulder.y - 40)) }
                 state.sim.advance(now: tl.date, target: target)
-                Self.draw(&ctx, shoulder: shoulder, tip: state.sim.spring.pos, scale: notch.width / 220, notchH: notch.height)
+                let e = state.sim.extend
+                guard e > 0 else { return }            // całkiem schowana: nic nie rysujemy
+                let sc = notch.width / 220
+                let hide = (1 - e * e * (3 - 2 * e)) * (100 * sc + notch.height + 40)      // cała łapka wjeżdża w notch, nic nie wystaje
+                Self.draw(&ctx, shoulder: CGPoint(x: shoulder.x, y: shoulder.y - hide), tip: CGPoint(x: state.sim.spring.pos.x, y: state.sim.spring.pos.y - hide), scale: sc, notchH: notch.height - hide)
             }
         }
         .mask(alignment: .top) {

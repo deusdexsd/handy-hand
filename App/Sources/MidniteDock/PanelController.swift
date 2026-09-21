@@ -285,21 +285,22 @@ final class PanelController: NSObject {
         case .glow: if abs(g - state.glow) > 0.02 { state.glow = g }
         case .paw:
             guard g > 0.02 else { if state.tipY > -30 { retractArm() }; return }
-            // dłoń celuje w kursor: kierunek z barku, zasięg rośnie, im bliżej jest kursor
-            let vx = p.x - h.midX, vy = max(14, h.minY - p.y)
+            // bark jeździ po notchu za kursorem (skrajny kursor = ramię wychodzi przy samej krawędzi notcha), dłoń celuje w kursor
+            let sc = h.width / 220, maxOff = h.width / 2 - 17 * sc
+            state.shoulderX = max(-maxOff, min(maxOff, (p.x - h.midX) * 0.85))
+            let vx = p.x - (h.midX + state.shoulderX), vy = max(14, h.minY - p.y)
             let dist = hypot(vx, vy), reach = min(h.width * 0.42, max(h.width * 0.16, dist * 0.7)) * (0.55 + 0.45 * g)
-            state.armActive = true
-            state.shoulderX = max(-45, min(45, vx * 0.1))
+            state.armActive = true; state.sim.wants = true
             state.tipX = vx / dist * reach; state.tipY = vy / dist * reach
         case .none: break
         }
     }
 
     private func retractArm() {
-        state.tipX = 0; state.tipY = -60; state.shoulderX = 0
+        state.tipX = 0; state.tipY = -60; state.sim.wants = false          // wjeżdża w notch, bark zostaje tam, gdzie był
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 1_600_000_000)
-            if state.tipY < -30 { state.armActive = false; state.sim.last = nil }      // schowana: zatrzymujemy symulację
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            if state.tipY < -30 { state.armActive = false; state.sim.last = nil; state.sim.extend = 0 }      // schowana: zatrzymujemy symulację
         }
     }
 
@@ -446,12 +447,12 @@ enum SnapshotRunner {
             save(img, "\(dir)/\(name).png"); w.orderOut(nil)
         }
         await viewShot("09b-handle-real-notch", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: { let st = PanelState(); st.glow = 0.9; return st }(), glowColor: PanelController.glowColor(.violet), realNotch: true, anchorSize: CGSize(width: 220, height: 38)).frame(width: 252, height: 54).background(Color(white: 0.55)), 252, 54)
-        for (name, tx, ty, sh, jump) in [("paw-settled", 30.0, 80.0, 4.0, false), ("paw-swing", 55.0, 62.0, 8.0, true), ("paw-left", -60.0, 60.0, -8.0, false)] {
+        for (name, tx, ty, sh, jump) in [("paw-settled", 30.0, 80.0, 4.0, false), ("paw-swing", 55.0, 62.0, 8.0, true), ("paw-left", -60.0, 60.0, -8.0, false), ("paw-right-edge", 45.0, 50.0, 93.0, false), ("paw-left-edge", -45.0, 50.0, -93.0, false)] {
             let st = PanelState(); st.armActive = true; st.tipX = tx; st.tipY = ty; st.shoulderX = sh
-            let shoulder = CGPoint(x: 200 + sh, y: 38 - 6)
+            let shoulder = CGPoint(x: 200 + sh, y: 38 - 6)   // okno 400 pt, notch 220x38
             st.sim.spring = TipSpring(pos: CGPoint(x: shoulder.x + (jump ? 0 : tx), y: shoulder.y + (jump ? 80 : ty)))
             if jump { for _ in 0..<7 { st.sim.spring.step(dt: 1.0 / 60, target: CGPoint(x: shoulder.x + tx, y: shoulder.y + ty)) } }    // poza „w locie”
-            st.sim.last = Date().addingTimeInterval(0.0001)
+            st.sim.wants = true; st.sim.extend = 1; st.sim.last = Date().addingTimeInterval(0.0001)
             await viewShot("09c-\(name)", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: st, glowColor: PanelController.glowColor(.violet), realNotch: true, anchorSize: CGSize(width: 220, height: 38), effect: .paw).frame(width: 400, height: 188).background(Color(white: 0.62)), 400, 188)
         }
         await settingsShot("10-set-general", GeneralTab(store: store))
