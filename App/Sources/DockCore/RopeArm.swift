@@ -1,40 +1,51 @@
 import CoreGraphics
 import Foundation
 
-/// Giętkie ramię jako lina Verleta: punkty mają bezwładność, koniec jest przyciągany sprężyną do celu, do tego lekki zwis
-/// i wygładzanie krzywizny. Dzięki temu ramię faluje, dobiega z opóźnieniem i „przestrzeliwuje” zamiast sztywno obracać odcinki.
+/// Giętkie ramię jako lina Verleta. Kształt spoczynkowy to łuk łokcia (parabola o długości równej długości ramienia),
+/// a bezwładność i sprężyste przyciąganie do tego łuku dają falowanie i „przestrzeliwanie” w ruchu.
+/// Bez grawitacji: zwis dawał odgięcie końca łapki do góry.
 public struct RopeArm: Sendable {
     public private(set) var pts: [CGPoint]
     private var prev: [CGPoint]
     public let count: Int
     public let segLen: CGFloat
-    public var maxReach: CGFloat { segLen * CGFloat(count - 1) * 0.97 }
+    public var length: CGFloat { segLen * CGFloat(count - 1) }
+    public var maxReach: CGFloat { length * 0.97 }
 
-    public init(shoulder: CGPoint, count: Int = 12, length: CGFloat = 88) {
+    public init(shoulder: CGPoint, count: Int = 12, length: CGFloat = 76) {
         self.count = count; segLen = length / CGFloat(count - 1)
         pts = (0..<count).map { CGPoint(x: shoulder.x, y: shoulder.y - CGFloat($0) * length / CGFloat(count - 1)) }   // start: zwinięte nad notchem
         prev = pts
     }
 
+    /// Wypukłość łuku dla danej odległości: L ≈ d + 8b²/(3d) => b = sqrt(3d(L-d)/8). Blisko celu ramię się zgina, daleko prostuje.
+    public func bow(forDistance d: CGFloat) -> CGFloat { min(0.5 * length, sqrt(max(0, 3 * d * max(0, length - d) / 8))) }
+
     public mutating func step(dt: CGFloat, shoulder: CGPoint, target: CGPoint,
-                              stiffness: CGFloat = 520, damping: CGFloat = 0.93, gravity: CGFloat = 620, smoothing: CGFloat = 0.05) {
+                              tipStiffness: CGFloat = 520, arcStiffness: CGFloat = 170, damping: CGFloat = 0.92) {
         let h = min(max(dt, 0.001), 1.0 / 30)
         var tgt = target
-        let dx = tgt.x - shoulder.x, dy = tgt.y - shoulder.y, d = hypot(dx, dy)
-        if d > maxReach { tgt = CGPoint(x: shoulder.x + dx / d * maxReach, y: shoulder.y + dy / d * maxReach) }
+        var dx = tgt.x - shoulder.x, dy = tgt.y - shoulder.y
+        var d = max(1, hypot(dx, dy))
+        if d > maxReach { tgt = CGPoint(x: shoulder.x + dx / d * maxReach, y: shoulder.y + dy / d * maxReach); dx = tgt.x - shoulder.x; dy = tgt.y - shoulder.y; d = maxReach }
+        let ux = dx / d, uy = dy / d
+        var perp = CGPoint(x: -uy, y: ux)
+        if perp.y > 0 || (abs(perp.y) < 0.001 && perp.x > 0) { perp = CGPoint(x: -perp.x, y: -perp.y) }      // łokieć w górę
+        let b = bow(forDistance: d)
         let damp = pow(damping, h * 60)
         for i in 1..<count {
+            let t = CGFloat(i) / CGFloat(count - 1)
+            let off = b * sin(.pi * t) * sin(.pi * t)      // zerowe nachylenie przy barku: ramię wychodzi prosto, bez „wargi” na krawędzi notcha
+            let vk = min(1, t / 0.4), kk = vk * vk                                  // pierwsze człony schodzą prosto w dół z notcha, wygięcie dopiero dalej
+            let want = CGPoint(x: shoulder.x + (dx * t + perp.x * off) * kk, y: shoulder.y + dy * t + perp.y * off * kk)
             let v = CGPoint(x: (pts[i].x - prev[i].x) * damp, y: (pts[i].y - prev[i].y) * damp)
             prev[i] = pts[i]
-            let w = i == count - 1 ? 1.0 : 0.05 * CGFloat(i) / CGFloat(count)       // koniec ciągnie mocno, reszta lekko
-            let ax = (tgt.x - pts[i].x) * stiffness * w, ay = (tgt.y - pts[i].y) * stiffness * w + gravity
-            pts[i] = CGPoint(x: pts[i].x + v.x + ax * h * h, y: pts[i].y + v.y + ay * h * h)
+            let k = i == count - 1 ? tipStiffness : arcStiffness
+            pts[i] = CGPoint(x: pts[i].x + v.x + (want.x - pts[i].x) * k * h * h, y: pts[i].y + v.y + (want.y - pts[i].y) * k * h * h)
         }
-        if count > 2 {
-            for i in 1..<(count - 1) {          // wygładzanie: kolejne punkty układają się w łuk
-                pts[i].x += ((pts[i - 1].x + pts[i + 1].x) / 2 - pts[i].x) * smoothing
-                pts[i].y += ((pts[i - 1].y + pts[i + 1].y) / 2 - pts[i].y) * smoothing
-            }
+        for i in 1..<(count - 1) {              // lekkie wygładzanie: bez załamań i „guzków” na ramieniu
+            pts[i].x += ((pts[i - 1].x + pts[i + 1].x) / 2 - pts[i].x) * 0.12
+            pts[i].y += ((pts[i - 1].y + pts[i + 1].y) / 2 - pts[i].y) * 0.12
         }
         for _ in 0..<10 {                       // stała długość członów
             pts[0] = shoulder

@@ -24,9 +24,9 @@ struct CreatureLayer: View {
             Canvas { ctx, size in
                 let shoulder = CGPoint(x: size.width / 2 + state.shoulderX, y: notch.height - 6)
                 let target = CGPoint(x: shoulder.x + state.tipX, y: shoulder.y + state.tipY)
-                if state.sim.last == nil { state.sim.rope = RopeArm(shoulder: shoulder) }
+                if state.sim.last == nil { state.sim.rope = RopeArm(shoulder: shoulder, length: 0.44 * notch.width) }
                 state.sim.advance(now: tl.date, shoulder: shoulder, target: target)
-                Self.draw(&ctx, state.sim.rope)
+                Self.draw(&ctx, state.sim.rope, scale: notch.width / 220)
             }
         }
         .mask(alignment: .top) {
@@ -35,16 +35,19 @@ struct CreatureLayer: View {
         .allowsHitTesting(false)
     }
 
-    static func draw(_ ctx: inout GraphicsContext, _ rope: RopeArm) {
+    /// Proporcje jak w filmie referencyjnym (skala względem szerokości notcha 220 pt): gruba, lekko zwężająca się trąba
+    /// (31 -> 23 pt) i pęk pięciu okrągłych palców na końcu, bez osobnej poduszki.
+    static func draw(_ ctx: inout GraphicsContext, _ rope: RopeArm, scale s: CGFloat) {
         let pts = rope.smoothPoints(perSegment: 4)
         let n = pts.count
         guard n > 6 else { return }
+        let w0 = 31 * s, w1 = 23 * s
         var left: [CGPoint] = [], right: [CGPoint] = []
         for i in 0..<n {
             let a = pts[max(0, i - 1)], b = pts[min(n - 1, i + 1)]
             let tx = b.x - a.x, ty = b.y - a.y, l = max(0.001, hypot(tx, ty))
             let t = CGFloat(i) / CGFloat(n - 1)
-            let w = (23 - 9 * t) / 2                                       // grubo przy barku, węziej przy łapce
+            let w = (w0 + (w1 - w0) * t) / 2
             left.append(CGPoint(x: pts[i].x - ty / l * w, y: pts[i].y + tx / l * w))
             right.append(CGPoint(x: pts[i].x + ty / l * w, y: pts[i].y - tx / l * w))
         }
@@ -53,14 +56,15 @@ struct CreatureLayer: View {
         right.reversed().forEach { p.addLine(to: $0) }
         p.closeSubpath()
         ctx.fill(p, with: .color(.black))
-        // łapka: pękata poduszka i cztery palce od strony końca ramienia
-        let tip = pts[n - 1], from = pts[n - 5]
+        // łapka: koniec ramienia zaokrąglony + wachlarz pięciu palców wokół końca
+        let tip = pts[n - 1], from = pts[n * 2 / 3]
         let dl = max(0.001, hypot(tip.x - from.x, tip.y - from.y)), ux = (tip.x - from.x) / dl, uy = (tip.y - from.y) / dl
-        ctx.fill(Path(ellipseIn: CGRect(x: tip.x - 12.5, y: tip.y - 12.5, width: 25, height: 25)), with: .color(.black))
-        for a in [-52.0, -18.0, 18.0, 52.0] {
-            let r = a * .pi / 180
-            let tx = ux * cos(r) - uy * sin(r), ty = ux * sin(r) + uy * cos(r)
-            ctx.fill(Path(ellipseIn: CGRect(x: tip.x + tx * 13 - 5.8, y: tip.y + ty * 13 - 5.8, width: 11.6, height: 11.6)), with: .color(.black))
+        ctx.fill(Path(ellipseIn: CGRect(x: tip.x - w1 / 2, y: tip.y - w1 / 2, width: w1, height: w1)), with: .color(.black))
+        let ring = w1 / 2 + 1.5 * s, r = 0.36 * w1
+        for a in [-78.0, -40.0, 0.0, 40.0, 78.0] {
+            let rad = a * .pi / 180
+            let tx = ux * cos(rad) - uy * sin(rad), ty = ux * sin(rad) + uy * cos(rad)
+            ctx.fill(Path(ellipseIn: CGRect(x: tip.x + tx * ring - r, y: tip.y + ty * ring - r, width: 2 * r, height: 2 * r)), with: .color(.black))
         }
     }
 }

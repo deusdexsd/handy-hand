@@ -375,42 +375,53 @@ final class ArmIKTests: XCTestCase {
 
 final class RopeArmTests: XCTestCase {
     func run(_ rope: inout RopeArm, _ target: CGPoint, steps: Int = 240) {
-        for _ in 0..<steps { rope.step(dt: 1.0 / 60, shoulder: CGPoint(x: 0, y: 0), target: target) }
+        for _ in 0..<steps { rope.step(dt: 1.0 / 60, shoulder: .zero, target: target) }
+    }
+    func lineDistance(_ p: CGPoint, _ a: CGPoint, _ b: CGPoint) -> CGFloat {
+        abs((b.y - a.y) * p.x - (b.x - a.x) * p.y + b.x * a.y - b.y * a.x) / max(0.001, hypot(b.x - a.x, b.y - a.y))
     }
 
     func testTipConvergesToReachableTargetAndLengthsHold() {
         var r = RopeArm(shoulder: .zero)
-        run(&r, CGPoint(x: 40, y: 60))
-        XCTAssertEqual(r.pts.last!.x, 40, accuracy: 6); XCTAssertEqual(r.pts.last!.y, 60, accuracy: 8)
+        run(&r, CGPoint(x: 25, y: 35))
+        XCTAssertEqual(r.pts.last!.x, 25, accuracy: 3); XCTAssertEqual(r.pts.last!.y, 35, accuracy: 3)
         for i in 0..<(r.count - 1) { XCTAssertEqual(hypot(r.pts[i + 1].x - r.pts[i].x, r.pts[i + 1].y - r.pts[i].y), r.segLen, accuracy: r.segLen * 0.06) }
     }
 
-    func testOvershootsAndSwingsInsteadOfSnapping() {
+    func testOvershootsInsteadOfSnappingToTheNewTarget() {
         var r = RopeArm(shoulder: .zero)
-        run(&r, CGPoint(x: 0, y: 60), steps: 240)
-        r.step(dt: 1.0 / 60, shoulder: .zero, target: CGPoint(x: 70, y: 40))          // nagły skok celu w bok
+        run(&r, CGPoint(x: 0, y: 45))
         var maxLag = 0.0
-        for _ in 0..<6 { r.step(dt: 1.0 / 60, shoulder: .zero, target: CGPoint(x: 70, y: 40)); maxLag = max(maxLag, Double(70 - r.pts.last!.x)) }
-        XCTAssertGreaterThan(maxLag, 10)                                              // po kilku klatkach koniec jeszcze dobiega (bezwładność)
-        run(&r, CGPoint(x: 70, y: 40), steps: 300)
-        XCTAssertEqual(r.pts.last!.x, 70, accuracy: 8)
+        for _ in 0..<6 { r.step(dt: 1.0 / 60, shoulder: .zero, target: CGPoint(x: 45, y: 25)); maxLag = max(maxLag, Double(45 - r.pts.last!.x)) }
+        XCTAssertGreaterThan(maxLag, 8)                                   // po skoku celu koniec jeszcze dobiega (bezwładność)
+        run(&r, CGPoint(x: 45, y: 25), steps: 300)
+        XCTAssertEqual(r.pts.last!.x, 45, accuracy: 4)
     }
 
-    func testBendsIntoAnArcNotAStraightStick() {
-        var r = RopeArm(shoulder: .zero)
-        run(&r, CGPoint(x: 60, y: 50), steps: 300)
-        let a = r.pts[0], b = r.pts[r.count - 1]
-        let mid = r.pts[r.count / 2]
-        let chord = hypot(b.x - a.x, b.y - a.y)
-        let dist = abs((b.y - a.y) * mid.x - (b.x - a.x) * mid.y + b.x * a.y - b.y * a.x) / chord    // odległość środka od cięciwy
-        XCTAssertGreaterThan(dist, 1.5)                                               // zwis i giętkość: nie idealnie prosta
+    func testElbowBendsUpWhenTheTargetIsCloseAndStraightensWhenFar() {
+        var near = RopeArm(shoulder: .zero); run(&near, CGPoint(x: 20, y: 30), steps: 300)
+        var far = RopeArm(shoulder: .zero); run(&far, CGPoint(x: 30, y: 52), steps: 300)
+        let bendNear = lineDistance(near.pts[near.count / 2], .zero, near.pts.last!), bendFar = lineDistance(far.pts[far.count / 2], .zero, far.pts.last!)
+        XCTAssertGreaterThan(bendNear, 8)                                 // blisko celu wyraźny łokieć
+        XCTAssertLessThan(bendFar, bendNear)                              // daleko prostsze
+        let mid = near.pts[near.count / 2], chordMid = CGPoint(x: near.pts.last!.x / 2, y: near.pts.last!.y / 2)
+        XCTAssertLessThan(mid.y, chordMid.y)                              // łokieć nad linią bark-dłoń
+    }
+
+    func testTipDoesNotCurlBackAtTheEnd() {
+        var r = RopeArm(shoulder: .zero); run(&r, CGPoint(x: -25, y: 38), steps: 300)
+        // ostatni człon ma prowadzić dalej od barku, nie zawracać (żadnego odgięcia końca do góry)
+        let n = r.count
+        let last = CGPoint(x: r.pts[n - 1].x - r.pts[n - 3].x, y: r.pts[n - 1].y - r.pts[n - 3].y)
+        let chord = CGPoint(x: r.pts[n - 1].x - r.pts[0].x, y: r.pts[n - 1].y - r.pts[0].y)
+        XCTAssertGreaterThan(last.x * chord.x + last.y * chord.y, 0)
     }
 
     func testUnreachableTargetAndNoNaN() {
         var r = RopeArm(shoulder: .zero)
         run(&r, CGPoint(x: 900, y: 900), steps: 200)
         XCTAssertTrue(r.pts.allSatisfy { !$0.x.isNaN && !$0.y.isNaN })
-        XCTAssertLessThanOrEqual(hypot(r.pts.last!.x, r.pts.last!.y), r.maxReach + 6)
+        XCTAssertLessThanOrEqual(hypot(r.pts.last!.x, r.pts.last!.y), r.maxReach + 4)
         XCTAssertEqual(r.smoothPoints().count, (r.count - 1) * 4 + 1)
     }
 }

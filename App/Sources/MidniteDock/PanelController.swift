@@ -113,7 +113,6 @@ final class PanelController: NSObject {
         body.contentView = NSHostingView(rootView: DockRootView(store: store, panel: state))
         body.onKey = { [weak self] k in self?.handleKey(k) ?? false }
         rebuildHandle()
-        startEffectTimer()
 
         NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved]) { [weak self] _ in MainActor.assumeIsolated { self?.updateHover() } }
         NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved]) { [weak self] e in MainActor.assumeIsolated { self?.updateHover() }; return e }
@@ -282,15 +281,14 @@ final class PanelController: NSObject {
         let h = f.glowRect
         let p = debugMouse ?? NSEvent.mouseLocation
         let dx = max(h.minX - p.x, 0, p.x - h.maxX), dy = max(h.minY - p.y, 0, p.y - h.maxY)
-        let g = NotchGlow.intensity(distance: hypot(dx, dy))
+        let g = NotchGlow.intensity(distance: hypot(dx, dy), radius: effect == .paw ? 105 : 140)
         switch effect {
         case .glow: if abs(g - state.glow) > 0.02 { state.glow = g }
         case .paw:
-            guard g > 0.02 else { if state.tipY > -30 && !ambientRunning { retractArm() }; return }
-            ambientTask?.cancel(); ambientRunning = false
+            guard g > 0.02 else { if state.tipY > -30 { retractArm() }; return }
             // dłoń celuje w kursor: kierunek z barku, zasięg rośnie, im bliżej jest kursor
             let vx = p.x - h.midX, vy = max(14, h.minY - p.y)
-            let dist = hypot(vx, vy), reach = min(84, max(38, dist * 0.8)) * (0.5 + 0.5 * g)
+            let dist = hypot(vx, vy), reach = min(h.width * 0.42, max(h.width * 0.16, dist * 0.7)) * (0.55 + 0.45 * g)
             state.armActive = true
             state.shoulderX = max(-45, min(45, vx * 0.1))
             state.tipX = vx / dist * reach; state.tipY = vy / dist * reach
@@ -307,35 +305,10 @@ final class PanelController: NSObject {
     }
 
     private func resetEffect() {
-        ambientTask?.cancel(); ambientRunning = false
         if state.glow != 0 { state.glow = 0 }
         if state.tipY > -30 { retractArm() }
     }
 
-    // Losowe „życie” łapki, gdy nikt nie jest blisko: co kilkanaście sekund wychyla się i macha na boki.
-    private var ambientTask: Task<Void, Never>?
-    private var ambientRunning = false
-    private var nextAmbient = Date().addingTimeInterval(8)
-    private var effectTimer: Timer?
-
-    func startEffectTimer() {
-        effectTimer?.invalidate()
-        effectTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in MainActor.assumeIsolated { self?.effectTick() } }
-    }
-
-    private func effectTick() {
-        guard store.settings.notchEffect == .paw, !expanded, state.tipY < -30, !ambientRunning, Date() >= nextAmbient else { return }
-        nextAmbient = Date().addingTimeInterval(Double.random(in: 12...30))
-        ambientRunning = true
-        ambientTask = Task { @MainActor in
-            state.armActive = true
-            for (x, y, sh) in [(-48.0, 56.0, -15.0), (42.0, 72.0, 15.0), (-34.0, 76.0, -8.0), (26.0, 60.0, 8.0)] {
-                state.shoulderX = sh; state.tipX = x; state.tipY = y
-                try? await Task.sleep(nanoseconds: 620_000_000); if Task.isCancelled { return }
-            }
-            retractArm(); ambientRunning = false
-        }
-    }
 
     private func updateHover() {
         updateGlow()
@@ -474,12 +447,12 @@ enum SnapshotRunner {
             save(img, "\(dir)/\(name).png"); w.orderOut(nil)
         }
         await viewShot("09b-handle-real-notch", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: { let st = PanelState(); st.glow = 0.9; return st }(), glowColor: PanelController.glowColor(.violet), realNotch: true, anchorSize: CGSize(width: 220, height: 38)).frame(width: 252, height: 54).background(Color(white: 0.55)), 252, 54)
-        for (name, tx, ty, sh, jump) in [("paw-settled", 40.0, 60.0, 8.0, false), ("paw-swing", 62.0, 44.0, 10.0, true), ("paw-left", -58.0, 52.0, -12.0, false)] {
+        for (name, tx, ty, sh, jump) in [("paw-settled", 20.0, 80.0, 4.0, false), ("paw-swing", 55.0, 60.0, 8.0, true), ("paw-left", -45.0, 65.0, -8.0, false)] {
             let st = PanelState(); st.armActive = true; st.tipX = tx; st.tipY = ty; st.shoulderX = sh
             let shoulder = CGPoint(x: 200 + sh, y: 38 - 6)
-            st.sim.rope = RopeArm(shoulder: shoulder); st.sim.last = Date()
+            st.sim.rope = RopeArm(shoulder: shoulder, length: 97); st.sim.last = Date()
             if jump {   // poza „w locie”: ramię ustalone w dół, cel skacze w bok i kilka klatek później linia jeszcze dobiega
-                for _ in 0..<240 { st.sim.rope.step(dt: 1.0 / 60, shoulder: shoulder, target: CGPoint(x: shoulder.x, y: shoulder.y + 60)) }
+                for _ in 0..<240 { st.sim.rope.step(dt: 1.0 / 60, shoulder: shoulder, target: CGPoint(x: shoulder.x, y: shoulder.y + 80)) }
                 for _ in 0..<7 { st.sim.rope.step(dt: 1.0 / 60, shoulder: shoulder, target: CGPoint(x: shoulder.x + tx, y: shoulder.y + ty)) }
             } else { for _ in 0..<300 { st.sim.rope.step(dt: 1.0 / 60, shoulder: shoulder, target: CGPoint(x: shoulder.x + tx, y: shoulder.y + ty)) } }
             st.sim.last = Date().addingTimeInterval(0.0001)
