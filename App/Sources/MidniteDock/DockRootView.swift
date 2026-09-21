@@ -6,6 +6,8 @@ import DockCore
 @MainActor
 final class PanelState: ObservableObject {
     @Published var glow: Double = 0
+    @Published var glowTint: Color?          // własny kolor podświetlenia (z Ustawień); zmiana nie przebudowuje uchwytu
+    @Published var glowIntensity: Double = 1
     @Published var tipX: Double = 0        // łapka: cel dłoni względem barku (pt)
     @Published var tipY: Double = -60      // domyślnie schowana nad dolną krawędzią notcha
     @Published var shoulderX: Double = 0   // bark przesuwa się lekko w stronę kursora

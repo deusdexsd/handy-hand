@@ -2,6 +2,8 @@
 dist/
 *.log
 logs/
-Phase0/TestMedia/
-Phase0/Output/
+archiwum/Phase0-spike/TestMedia/
+archiwum/Phase0-spike/Output/
 .DS_Store
+.swiftpm/
+*.dmg

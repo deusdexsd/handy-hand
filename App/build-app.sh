@@ -4,7 +4,8 @@ set -e
 cd "$(dirname "$0")"
 BUILD=~/Library/Caches/MidniteDockBuild-App
 CONFIG=${CONFIG:-debug}
-if ! swift build -c $CONFIG --scratch-path $BUILD > /tmp/dock-build.log 2>&1; then grep -E "error" /tmp/dock-build.log | head -20; echo "BUDOWANIE NIEUDANE (nie pakuję starej wersji)"; exit 1; fi
+ARCHS=(); [ "$UNIVERSAL" = "1" ] && ARCHS=(--arch arm64 --arch x86_64)      # UNIVERSAL=1: Apple Silicon + Intel
+if ! swift build -c $CONFIG ${ARCHS[@]} --scratch-path $BUILD > /tmp/dock-build.log 2>&1; then grep -E "error" /tmp/dock-build.log | head -20; echo "BUDOWANIE NIEUDANE (nie pakuję starej wersji)"; exit 1; fi
 CAP="$(echo ${CONFIG:0:1} | tr a-z A-Z)${CONFIG:1}"
 BIN=$(find $BUILD -path "*Products/$CAP/MidniteDock" -type f 2>/dev/null | head -1)
 [ -z "$BIN" ] && BIN=$(find $BUILD -name MidniteDock -type f -perm +111 | grep -v dSYM | head -1)

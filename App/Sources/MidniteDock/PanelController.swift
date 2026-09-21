@@ -58,22 +58,24 @@ struct HandleView: View {
 
     var body: some View {
         let glow = expanded || effect != .glow ? 0 : state.glow
+        let glowColor = state.glowTint ?? self.glowColor
+        let k = state.glowIntensity                 // siła podświetlenia z Ustawień
         ZStack(alignment: .top) {
             if realNotch {
                 // Prawdziwy notch: w spoczynku nic. Poświata wychodzi zza czarnego kształtu równego notchowi
                 // (nad fizycznym notchem nie ma pikseli, więc sam kształt jest niewidoczny).
                 UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10, style: .continuous)
                     .fill(Color.black).frame(width: anchorSize.width - 2, height: anchorSize.height)
-                    .shadow(color: glowColor.opacity(0.95 * glow), radius: 8 + 22 * glow)
-                    .shadow(color: glowColor.opacity(0.65 * glow), radius: 3 + 6 * glow)
+                    .shadow(color: glowColor.opacity(min(1, 0.95 * glow * k)), radius: (8 + 22 * glow) * k)
+                    .shadow(color: glowColor.opacity(min(1, 0.65 * glow * k)), radius: (3 + 6 * glow) * k)
                     .animation(.easeOut(duration: 0.18), value: glow)
             } else if showsCap {
                 let shape = UnevenRoundedRectangle(topLeadingRadius: side == 1 ? 12 : 0, bottomLeadingRadius: side == 1 || side == 0 ? 12 : 0,
                                                    bottomTrailingRadius: side == -1 || side == 0 ? 12 : 0, topTrailingRadius: side == -1 ? 12 : 0, style: .continuous)
                 ZStack {
                     shape.fill(Color.black)
-                    RadialGradient(colors: [glowColor.opacity(0.55 * glow), .clear], center: side == -1 ? .leading : (side == 1 ? .trailing : .bottom), startRadius: 0, endRadius: 110).clipShape(shape)
-                    shape.strokeBorder(glowColor.opacity(0.8 * glow), lineWidth: 1)
+                    RadialGradient(colors: [glowColor.opacity(min(1, 0.55 * glow * k)), .clear], center: side == -1 ? .leading : (side == 1 ? .trailing : .bottom), startRadius: 0, endRadius: 110).clipShape(shape)
+                    shape.strokeBorder(glowColor.opacity(min(1, 0.8 * glow * k)), lineWidth: 1)
                     Image(systemName: "pawprint.fill").font(.system(size: 11))
                         .foregroundStyle(Color.white.opacity(expanded || isPlaying ? 0.55 : 0.22 + 0.5 * glow))
                 }
@@ -174,6 +176,7 @@ final class PanelController: NSObject {
         handle.contentView = NSHostingView(rootView: HandleView(showsCap: f.cap, atBottom: f.bottom, expanded: expanded, isPlaying: store.previewer.isPlaying, state: state, glowColor: Self.glowColor(store.settings.glowColor), realNotch: f.realNotch, anchorSize: f.glowRect.size, side: store.settings.placement == .leftMiddle ? -1 : (store.settings.placement == .rightMiddle ? 1 : 0), effect: activeEffect))
         handle.setFrame(f.handle, display: true)
         state.atBottom = f.bottom
+        state.glowTint = Self.glowTint(store.settings); state.glowIntensity = store.settings.glowIntensity
     }
 
     func show() { handle.orderFrontRegardless(); apply(animated: false) }
@@ -194,7 +197,10 @@ final class PanelController: NSObject {
     private var handleKey = ""
     private func settingsChanged() {
         let s = store.settings
-        let key = "\(s.placement.rawValue)|\(s.virtualNotch.rawValue)|\(s.glowColor.rawValue)|\(s.notchEffect.rawValue)"
+        let tint = Self.glowTint(s)
+        if state.glowTint != tint { state.glowTint = tint }
+        if state.glowIntensity != s.glowIntensity { state.glowIntensity = s.glowIntensity }
+        let key = "\(s.placement.rawValue)|\(s.virtualNotch.rawValue)|\(s.notchEffect.rawValue)"
         if key != handleKey { handleKey = key; rebuildHandle() }      // rozmiar panelu zmienia się w trakcie rozciągania: uchwytu nie przebudowujemy
         apply(animated: false)
     }
@@ -260,6 +266,12 @@ final class PanelController: NSObject {
     func debugSetHovering(_ on: Bool) {
         if on { hovering = true; collapseWork?.cancel(); collapseWork = nil; apply(animated: true) }
         else { hovering = false; pinnedOnce = false; apply(animated: true) }
+    }
+
+    /// Kolor podświetlenia z ustawień (#RRGGBB z kółka kolorów).
+    static func glowTint(_ s: AppSettings) -> Color {
+        let c = HexColor.parse(s.glowHex) ?? HexColor.parse(GlowChoice.violet.hex)!
+        return Color(.sRGB, red: c.r, green: c.g, blue: c.b, opacity: 1)
     }
 
     static func glowColor(_ g: GlowChoice) -> Color {
@@ -458,6 +470,10 @@ enum SnapshotRunner {
             save(img, "\(dir)/\(name).png"); w.orderOut(nil)
         }
         await viewShot("09b-handle-real-notch", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: { let st = PanelState(); st.glow = 0.9; return st }(), glowColor: PanelController.glowColor(.violet), realNotch: true, anchorSize: CGSize(width: 220, height: 38)).frame(width: 252, height: 54).background(Color(white: 0.55)), 252, 54)
+        for (name, k) in [("glow-weak", 0.4), ("glow-normal", 1.0), ("glow-strong", 2.0)] {
+            let st = PanelState(); st.glow = 0.9; st.glowIntensity = k; st.glowTint = Color(.sRGB, red: 1, green: 0.53, blue: 0, opacity: 1)
+            await viewShot("09d-\(name)", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: st, glowColor: .white, realNotch: true, anchorSize: CGSize(width: 220, height: 38)).frame(width: 400, height: 150).background(Color(white: 0.2)), 400, 150)
+        }
         for (name, tx, ty, sh, jump) in [("paw-settled", 30.0, 80.0, 4.0, false), ("paw-swing", 55.0, 62.0, 8.0, true), ("paw-left", -60.0, 60.0, -8.0, false), ("paw-right-edge", 45.0, 50.0, 80.0, false), ("paw-left-edge", -45.0, 50.0, -80.0, false)] {
             let st = PanelState(); st.armActive = true; st.tipX = tx; st.tipY = ty; st.shoulderX = sh
             let shoulder = CGPoint(x: 200 + sh, y: 38 - 6)   // okno 400 pt, notch 220x38

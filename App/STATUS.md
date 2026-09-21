@@ -9,7 +9,7 @@ Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`), bo s
 | Obszar | Co | Jak sprawdzone |
 |---|---|---|
 | Panel | NSPanel nad oknami, tryby: po najechaniu / podążaj za aplikacją / przypięty; pozycje: notch (góra-środek), prawa krawędź na środku, lewa krawędź na środku, z suwakiem położenia na bokach (Ustawienia); wirtualny notch (czarna wysepka) auto / zawsze / nigdy | autotest na prawdziwej geometrii ekranu, lista okien systemu |
-| Źródła | foldery i biblioteki FCP (czytane jak folder, tylko „Original Media”), symlinki rozwiązywane, obserwowanie zmian na żywo | 57 testów + autotest (plik dodany i usunięty widać w indeksie) |
+| Źródła | foldery i biblioteki FCP (czytane jak folder, tylko „Original Media”), symlinki rozwiązywane, obserwowanie zmian na żywo | 58 testów + autotest (plik dodany i usunięty widać w indeksie) |
 | Wizualizacje | waveform z prawdziwego pliku (Accelerate, cache na dysku), wspólna skala czasu, miniatura wideo, czas trwania na kaflu, odsłuch/podgląd (AVPlayer) | render widoków + autotest odtwarzania |
 | Organizacja | kolekcje własne, smart: przedziały długości (osobno audio i wideo, dowolnie dodawane, z odcieniem szarości), reguły po słowach, typ; ulubione, tagi | testy zapytań |
 | Wyszukiwanie i filtry | szukanie w bieżącej kategorii, filtry (typ, długość, data, tag) z widocznymi chipami i „Wyczyść”, sortowanie | testy + render |
@@ -26,7 +26,7 @@ Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`), bo s
 | Skróty w panelu | 1–4 filtr typu w bieżącej kategorii (mapowanie w Ustawieniach → Skróty; ponowne = zdejmuje), Shift+1–4 zmienia typ zaznaczonego dźwięku, 5 ulubione, 6 czyści filtry; spacja: dźwięk = odsłuch, obraz/wideo = większy podgląd | autotest |
 | Skróty globalne i Finder | globalny skrót pokaż/ukryj panel (domyślnie ⌃⌥⌘L, nagrywany w Ustawieniach → Skróty, można wyłączyć; Carbon, działa z FCP na wierzchu, bez uprawnień); klawisz 9 (do wyboru 7/8/9/0/wyłączony) = pokaż zaznaczone w Finderze | test ustawień, rejestracja skrótu w autotest; **naciśnięcie prawdziwego skrótu nie sprawdzone** |
 | Eksport | do folderu „Łapka – eksport”: układ Typ i długość albo Kolekcje; kopiuj albo dowiązania; nie nadpisuje | 2 testy |
-| Efekt przy notchu | Ustawienia → Wygląd: Brak / Podświetlenie (3 kolory) / Łapka (domyślnie). Łapka: SZTYWNE ramię (ok. 15% giętkości = lekkie sprężyste dobieganie), łokieć tuż przy notchu, przedramię i pęk pięciu palców skierowane w stronę kursora, grubość 31→25 pt przy notchu 220 pt; reaguje TYLKO na kursor w promieniu ok. 105 pt (wysuwanie/chowanie wolne, chowanie z opóźnieniem 0,45 s; bark przeskakuje krokami po notchu, dłoń „pacuje” w cyklu ok. 1,15 s); na bocznych krawędziach działa tylko podświetlenie | testy (IK, sprężyna), renderowanie póz, test w prawdziwym oknie z symulowanym kursorem; **ruch na żywo niesprawdzony** |
+| Efekt przy notchu | Ustawienia → Wygląd: Brak / Podświetlenie (kolor z kółka kolorów albo 3 gotowe, suwak siły 0,3–2) / Łapka (domyślnie). Łapka: SZTYWNE ramię (ok. 15% giętkości = lekkie sprężyste dobieganie), łokieć tuż przy notchu, przedramię i pęk pięciu palców skierowane w stronę kursora, grubość 31→25 pt przy notchu 220 pt; reaguje TYLKO na kursor w promieniu ok. 105 pt (wysuwanie/chowanie wolne, chowanie z opóźnieniem 0,45 s; bark przeskakuje krokami po notchu, dłoń „pacuje” w cyklu ok. 1,15 s); na bocznych krawędziach działa tylko podświetlenie | testy (IK, sprężyna), renderowanie póz, test w prawdziwym oknie z symulowanym kursorem; **ruch na żywo niesprawdzony** |
 | Układy | zapisane układy (kategoria + filtry + sortowanie + widok) jednym kliknięciem | testy |
 | Trwałość | zapis JSON tolerancyjny na brakujące klucze (aktualizacje nie kasują danych) | testy + autotest |
 | Wygląd | neutralny, jeden akcent (do wyboru), opcjonalne subtelne kolory źródeł, jasny/ciemny, natywny materiał (NSVisualEffectView), SF Symbols, sprężyny, reduce motion / reduce transparency | render |
@@ -51,12 +51,16 @@ Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`), bo s
 - przeciąganie plików z Findera do panelu, zarządzanie tagami poza dodawaniem,
 - eksport skategoryzowanej biblioteki do struktury folderów (pomysł Davida, na później).
 
+## Dystrybucja
+
+`App/make-dmg.sh` buduje uniwersalną aplikację (arm64 + x86_64) i pakuje w `~/Downloads/Łapka.dmg` (dysk z Łapką i skrótem do Programów). Podpis ad-hoc, bez notaryzacji: na innym Macu trzeba raz zatwierdzić aplikację (Ustawienia → Prywatność i ochrona → Otwórz mimo to albo `xattr -dr com.apple.quarantine`); opisane w `docs/Instrukcja.html`. Uruchomienie na innym Macu **nie było sprawdzone** (nie miałem drugiego komputera); sprawdzone: DMG się montuje, podpis jest poprawny, w środku oba typy procesorów.
+
 ## Uruchamianie i testy
 
 ```
 cd Projects/MidniteDock/App
 ./package.sh        # release -> dist/MidniteDock.app
 ./dev-run.sh        # wersja deweloperska na danych testowych (osobny katalog danych)
-swift test --scratch-path ~/Library/Caches/MidniteDockBuild-App   # 57 testów
+swift test --scratch-path ~/Library/Caches/MidniteDockBuild-App   # 58 testów
 ```
 Zmienne środowiskowe dev: `MIDNITEDOCK_DATA_DIR`, `MIDNITEDOCK_DEV_MEDIA`, `MIDNITEDOCK_MUTE`, `MIDNITEDOCK_SHOTS=<katalog>` (renderuje stany do PNG), `MIDNITEDOCK_SELFTEST=1` (autotest logiki panelu).
