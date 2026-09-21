@@ -7,6 +7,7 @@ enum PanelKey { case space, up, down, left, right, enter, escape, digit(Int, shi
 
 final class DockPanel: NSPanel {
     var onKey: ((PanelKey) -> Bool)?
+    var canLeaveTextField: (() -> Bool)?      // false, gdy na wierzchu jest pytanie (Esc ma je anulować, nie wychodzić z pola)
     var allowsKey = true
     init(size: CGSize) {
         super.init(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -21,6 +22,11 @@ final class DockPanel: NSPanel {
 
     /// Klawisze przechwytujemy przed SwiftUI (ScrollView sam by je zjadł), ale nie wtedy, gdy trwa pisanie w polu tekstowym.
     override func sendEvent(_ event: NSEvent) {
+        // Esc w polu tekstowym (np. wyszukiwarce) wychodzi z pisania, tekst zostaje, a klawisze 1-0, strzałki i spacja znów działają.
+        if event.type == .keyDown, event.keyCode == 53, firstResponder is NSTextView,
+           event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty, canLeaveTextField?() ?? true {
+            makeFirstResponder(nil); return
+        }
         if event.type == .keyDown, !(firstResponder is NSTextView),
            event.modifierFlags.intersection([.command, .control, .option]).isEmpty,
            let k = Self.key(event), onKey?(k) == true { return }
@@ -116,6 +122,7 @@ final class PanelController: NSObject {
         handle.hasShadow = false
         body.contentView = NSHostingView(rootView: DockRootView(store: store, panel: state))
         body.onKey = { [weak self] k in self?.handleKey(k) ?? false }
+        body.canLeaveTextField = { [weak self] in self.map { $0.store.prompt == nil && $0.store.notice == nil } ?? true }
         rebuildHandle()
 
         NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved]) { [weak self] _ in MainActor.assumeIsolated { self?.updateHover() } }
@@ -664,6 +671,21 @@ enum SelfTest {
             controller.debugMouse = CGPoint(x: gr.midX + 900, y: gr.minY - 900); controller.debugUpdateEffect(); await wait(2.0)
             print("SELF 31b po odjechaniu: cel Y=\(Int(controller.state.tipY)) aktywna=\(controller.state.armActive)")
             controller.debugMouse = nil
+        }
+        // Esc w wyszukiwarce: wychodzi z pola, a potem klawisz cyfry działa jak skrót
+        do {
+            let panel = controller.bodyPanel
+            func find(_ v: NSView) -> NSTextField? { if let t = v as? NSTextField, t.isEditable { return t }; for c in v.subviews { if let r = find(c) { return r } }; return nil }
+            if let cv = panel.contentView, let field = find(cv) {
+                panel.makeKeyAndOrderFront(nil); panel.makeFirstResponder(field); await wait(0.3)
+                let editing = panel.firstResponder is NSTextView
+                func key(_ code: UInt16, _ ch: String) -> NSEvent { NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: panel.windowNumber, context: nil, characters: ch, charactersIgnoringModifiers: ch, isARepeat: false, keyCode: code)! }
+                panel.sendEvent(key(53, "\u{1b}")); await wait(0.2)
+                print("SELF 32 Esc w wyszukiwarce: pisało=\(editing) po Esc pisze=\(panel.firstResponder is NSTextView)")
+                store.config.filters = .none
+                panel.sendEvent(key(19, "2")); await wait(0.2)       // klawisz 2 = filtr typu (muzyka)
+                print("SELF 32b po Esc klawisz 2 działa: filtr=\(String(describing: store.config.filters.klass))"); store.config.filters = .none
+            } else { print("SELF 32 brak pola wyszukiwania w panelu") }
         }
         // Zapis na dysk
         store.settings.accent = .violet; store.settings.placement = .rightMiddle
