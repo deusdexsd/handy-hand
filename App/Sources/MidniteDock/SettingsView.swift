@@ -127,7 +127,7 @@ struct AppearanceTab: View {
                 if store.settings.notchEffect == .glow {
                     Picker("Kolor poświaty", selection: $store.data.settings.glowColor) { ForEach(GlowChoice.allCases, id: \.self) { Text($0.label).tag($0) } }.pickerStyle(.segmented)
                 }
-                Text("Łapka wychyla się spod notcha w stronę kursora, gdy jest blisko (ok. 140 pt), a czasem sama macha, gdy nikogo nie ma. Łapka działa tylko przy notchu (górny środek); na bocznych krawędziach jest podświetlenie. Symulacja chodzi tylko, gdy łapka jest widoczna; „Brak” nie zużywa nic.")
+                Text("Łapka wychyla się spod notcha i „pacuje” w stronę kursora tylko wtedy, gdy jest blisko (ok. 105 pt), a poza tym całkiem się chowa. Podświetlenie rozjaśnia się przy kursorze w promieniu ok. 140 pt. Łapka działa tylko przy notchu (górny środek); na bocznych krawędziach jest podświetlenie. Symulacja chodzi tylko, gdy łapka jest widoczna; „Brak” nie zużywa nic.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Waveform") {
@@ -241,6 +241,19 @@ struct ShortcutsTab: View {
                 Text("W bieżącej kategorii (folder, kolekcja…) pokazuje tylko wybrany typ. Ponowne naciśnięcie zdejmuje filtr. Shift + klawisz zmienia typ zaznaczonego dźwięku (SFX albo muzyka).")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Section("Skrót globalny: pokaż / ukryj panel") {
+                HotkeyRecorder(spec: $store.data.settings.toggleHotkey)
+                Text("Działa z każdej aplikacji (także z Final Cut Pro), bez najeżdżania kursorem na notch. Ten sam skrót chowa panel. Wymaga co najmniej jednego modyfikatora (⌘, ⌥, ⌃ lub ⇧).")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Pokaż w Finderze") {
+                Picker("Klawisz w panelu", selection: $store.data.settings.finderKey) {
+                    ForEach([9, 8, 7, 0], id: \.self) { Text("\($0)").tag($0) }
+                    Text("wyłączony").tag(-1)
+                }
+                Text("Po naciśnięciu pokazuje w Finderze zaznaczone pliki (tak samo jak „Pokaż w Finderze” z menu prawego przycisku).")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section("Pozostałe") {
                 LabeledContent("5") { Text("dodaj zaznaczone do ulubionych (lub usuń)") }
                 LabeledContent("6") { Text("wyczyść filtry i wyszukiwanie") }
@@ -278,5 +291,43 @@ struct ExportTab: View {
             a.informativeText = "Zapisano: \(r.done), pominięto istniejące: \(r.skipped)" + (r.failed.isEmpty ? "" : ", błędy: \(r.failed.count)") + "\n\(dest.path)"
             a.runModal()
         }
+    }
+}
+
+/// Pole do nagrywania skrótu: klik „Zmień”, naciśnij kombinację z modyfikatorem (Esc anuluje).
+struct HotkeyRecorder: View {
+    @Binding var spec: HotKeySpec?
+    @State private var recording = false
+    @State private var monitor: Any?
+
+    var body: some View {
+        LabeledContent("Skrót") {
+            HStack(spacing: 8) {
+                Text(recording ? "naciśnij kombinację…" : (spec.map(HotKeyText.string) ?? "wyłączony"))
+                    .font(.system(.body, design: .rounded)).foregroundStyle(recording ? Color.accentColor : .primary)
+                    .padding(.horizontal, 10).padding(.vertical, 3)
+                    .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(.quaternary))
+                Button(recording ? "Anuluj" : "Zmień") { recording ? stop() : start() }
+                if spec != nil { Button("Wyłącz") { stop(); spec = nil } }
+                else { Button("Domyślny") { spec = .defaultToggle } }
+            }
+        }
+        .onDisappear { stop() }
+    }
+
+    private func start() {
+        recording = true
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { e in
+            if e.keyCode == 53 { stop(); return nil }                    // Esc: anuluj
+            let mods = HotKeyText.carbon(e.modifierFlags)
+            guard mods != 0 else { NSSound.beep(); return nil }          // bez modyfikatora skrót przechwyciłby zwykłe pisanie
+            spec = HotKeySpec(keyCode: UInt32(e.keyCode), modifiers: mods)
+            stop(); return nil
+        }
+    }
+
+    private func stop() {
+        recording = false
+        if let m = monitor { NSEvent.removeMonitor(m); monitor = nil }
     }
 }

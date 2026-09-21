@@ -82,9 +82,18 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var notchEffect: NotchEffect = .glow
     public var glowColor: GlowChoice = .violet
     public var strictDuplicates: Bool = false
+    /// Globalny skrót pokazujący/chowający panel bez najeżdżania kursorem (nil = wyłączony).
+    public var toggleHotkey: HotKeySpec? {
+        get { hotkeyOff ? nil : hotkeySpec }
+        set { if let v = newValue { hotkeySpec = v; hotkeyOff = false } else { hotkeyOff = true } }
+    }
+    var hotkeySpec: HotKeySpec = .defaultToggle      // zapisane osobno, żeby „wyłączony” przetrwał zapis (nil w JSON znika)
+    var hotkeyOff = false
+    /// Klawisz cyfrowy w panelu: „Pokaż w Finderze” dla zaznaczonych (7, 8, 9 albo 0; -1 = wyłączony).
+    public var finderKey: Int = 9
     public init() {}
 
-    enum CodingKeys: String, CodingKey { case sidePosition, autoplayOnSelect, waveformAutoScale, bigMediaPreview, quickKeys, notchGlow, notchEffect, glowColor, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
+    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, sidePosition, autoplayOnSelect, waveformAutoScale, bigMediaPreview, quickKeys, notchGlow, notchEffect, glowColor, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
     /// Tolerancyjne dekodowanie: brakujący klucz (np. po aktualizacji) = wartość domyślna, a nie utrata ustawień.
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -110,7 +119,21 @@ public struct AppSettings: Codable, Equatable, Sendable {
         notchEffect = try c.decodeIfPresent(NotchEffect.self, forKey: .notchEffect) ?? (notchGlow ? .glow : .none)
         glowColor = try c.decodeIfPresent(GlowChoice.self, forKey: .glowColor) ?? def.glowColor
         strictDuplicates = try c.decodeIfPresent(Bool.self, forKey: .strictDuplicates) ?? def.strictDuplicates
+        hotkeySpec = try c.decodeIfPresent(HotKeySpec.self, forKey: .hotkeySpec) ?? def.hotkeySpec
+        hotkeyOff = try c.decodeIfPresent(Bool.self, forKey: .hotkeyOff) ?? def.hotkeyOff
+        let fk = try c.decodeIfPresent(Int.self, forKey: .finderKey) ?? def.finderKey
+        finderKey = [7, 8, 9, 0, -1].contains(fk) ? fk : def.finderKey
     }
+}
+
+/// Globalny skrót klawiszowy (kod klawisza + modyfikatory w formacie Carbon: cmd 256, shift 512, option 2048, control 4096).
+public struct HotKeySpec: Codable, Equatable, Sendable {
+    public var keyCode: UInt32
+    public var modifiers: UInt32
+    public init(keyCode: UInt32, modifiers: UInt32) { self.keyCode = keyCode; self.modifiers = modifiers }
+    public static let cmd: UInt32 = 256, shift: UInt32 = 512, option: UInt32 = 2048, control: UInt32 = 4096
+    /// Domyślny: ⌃⌥⌘L (trzy modyfikatory, mało prawdopodobne, że coś koliduje).
+    public static let defaultToggle = HotKeySpec(keyCode: 37, modifiers: control | option | cmd)
 }
 
 public struct UserData: Codable, Equatable, Sendable {

@@ -349,6 +349,7 @@ final class LibraryStore: ObservableObject {
     /// Klawisze 1-4: filtr typu w bieżącej kategorii (ponowne naciśnięcie zdejmuje); Shift+1-4: zmiana typu zaznaczonego dźwięku;
     /// 5: ulubione; 6: wyczyść filtr i wyszukiwanie.
     func quickKey(_ n: Int, shift: Bool) -> Bool {
+        if n == settings.finderKey, !shift { revealSelectionInFinder(); return true }
         switch n {
         case 1...4:
             guard settings.quickKeys.indices.contains(n - 1) else { return false }
@@ -364,6 +365,12 @@ final class LibraryStore: ObservableObject {
         case 6: config.filters = .none; search = ""; return true
         default: return false
         }
+    }
+
+    /// Pokazuje zaznaczone pliki w Finderze (jak „Pokaż w Finderze” z menu kontekstowego).
+    func revealSelectionInFinder() {
+        let urls = selection.compactMap { item($0) }.map { URL(fileURLWithPath: $0.path) }
+        if !urls.isEmpty { NSWorkspace.shared.activateFileViewerSelecting(urls) }
     }
 
     /// Elementy do eksportu: bez duplikatów, jeśli zwijanie jest włączone.

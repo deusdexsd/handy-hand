@@ -37,7 +37,7 @@ final class DockPanel: NSPanel {
         case 36, 76: return .enter
         case 53: return .escape
         default:
-            let digits: [UInt16: Int] = [18: 1, 19: 2, 20: 3, 21: 4, 23: 5, 22: 6]
+            let digits: [UInt16: Int] = [18: 1, 19: 2, 20: 3, 21: 4, 23: 5, 22: 6, 26: 7, 28: 8, 25: 9, 29: 0]
             return digits[e.keyCode].map { .digit($0, shift: e.modifierFlags.contains(.shift)) }
         }
     }
@@ -310,7 +310,7 @@ final class PanelController: NSObject {
     private func retractArm() {
         state.tipX = 0; state.tipY = -60; state.sim.wants = false          // wjeżdża w notch, bark zostaje tam, gdzie był
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_200_000_000)
+            try? await Task.sleep(nanoseconds: 1_800_000_000)
             if state.tipY < -30 { state.armActive = false; state.sim.last = nil; state.sim.extend = 0 }      // schowana: zatrzymujemy symulację
         }
     }

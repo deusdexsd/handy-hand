@@ -597,4 +597,18 @@ final class IndexerTests: XCTestCase {
         await fulfillment(of: [exp], timeout: 5)
         w.stop()
     }
+
+    func testHotkeyAndFinderKeyDefaultsAndRoundTrip() throws {
+        var d = UserData()
+        XCTAssertEqual(d.settings.toggleHotkey, .defaultToggle)
+        XCTAssertEqual(d.settings.finderKey, 9)
+        d.settings.toggleHotkey = nil; d.settings.finderKey = 8
+        let back = try JSONDecoder().decode(UserData.self, from: JSONEncoder().encode(d))
+        XCTAssertNil(back.settings.toggleHotkey)            // celowo wyłączony zostaje wyłączony
+        XCTAssertEqual(back.settings.finderKey, 8)
+        let old = try JSONDecoder().decode(AppSettings.self, from: Data("{\"mode\":\"hover\"}".utf8))
+        XCTAssertEqual(old.toggleHotkey, .defaultToggle)    // stare zapisy dostają domyślny skrót
+        let bad = try JSONDecoder().decode(AppSettings.self, from: Data("{\"finderKey\":3}".utf8))
+        XCTAssertEqual(bad.finderKey, 9)                    // 3 zajęte przez filtr typu: wraca domyślny
+    }
 }

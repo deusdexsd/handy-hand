@@ -15,7 +15,7 @@ final class ArmSim {
     func beginFrame(now: Date, shoulderTarget: CGFloat) -> CGFloat {
         let dt = min(0.1, last.map { CGFloat(now.timeIntervalSince($0)) } ?? 1.0 / 60)
         last = now
-        extend += ((wants ? 1 : 0) - extend) * min(1, dt * (wants ? 3.6 : 2.6))
+        extend += ((wants ? 1 : 0) - extend) * min(1, dt * (wants ? 6.5 : 3.6))
         if !wants && extend < 0.004 { extend = 0 }
         shoulderX = extend < 0.08 ? shoulderTarget : shoulderX + (shoulderTarget - shoulderX) * min(1, dt * 7)
         return dt
@@ -68,10 +68,10 @@ struct CreatureLayer: View {
         .allowsHitTesting(false)
     }
 
-    /// Proporcje względem szerokości notcha 220 pt: człon przy notchu 22, przedramię 75, grubość 31 -> 25 pt, pęk pięciu palców.
+    /// Proporcje względem szerokości notcha 220 pt: ramię przy notchu 36 pt (cieńsze, 25), łokieć, dalej przedramię 64 pt, które szerzej idzie do dłoni (29 -> 36), pęk pięciu palców.
     static func draw(_ ctx: inout GraphicsContext, shoulder: CGPoint, tip target: CGPoint, scale s: CGFloat, notchH: CGFloat) {
-        let r = ArmIK.solve(shoulder: shoulder, target: target, l1: 22 * s, l2: 75 * s, elbowFloor: notchH + 2)
-        let w0 = 31 * s, wE = 29 * s, w1 = 25 * s
+        let r = ArmIK.solve(shoulder: shoulder, target: target, l1: 36 * s, l2: 64 * s, elbowFloor: notchH + 2)
+        let w0 = 25 * s, wE = 29 * s, w1 = 36 * s
         func limb(_ a: CGPoint, _ b: CGPoint, _ wa: CGFloat, _ wb: CGFloat) {
             let dx = b.x - a.x, dy = b.y - a.y, l = max(0.001, hypot(dx, dy)), nx = -dy / l, ny = dx / l
             var p = Path()
