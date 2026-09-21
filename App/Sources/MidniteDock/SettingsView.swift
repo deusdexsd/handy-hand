@@ -21,8 +21,19 @@ struct SettingsView: View {
 
 struct GeneralTab: View {
     @ObservedObject var store: LibraryStore
+    @State private var loginOn = LoginItem.isOn
+    @State private var loginError: String?
     var body: some View {
         Form {
+            Section("Uruchamianie") {
+                Toggle("Otwieraj Łapkę przy logowaniu do komputera", isOn: Binding(get: { loginOn }, set: { on in
+                    loginError = LoginItem.set(on); loginOn = LoginItem.isOn
+                }))
+                if let e = loginError { Text(e).font(.caption).foregroundStyle(.red) }
+                else if LoginItem.needsApproval { Text("Zatwierdź Łapkę w Ustawieniach systemowych → Ogólne → Elementy logowania.").font(.caption).foregroundStyle(.secondary) }
+                else if LoginItem.isDevBuild { Text("Wersja deweloperska: włącz w zainstalowanej aplikacji z Programów.").font(.caption).foregroundStyle(.secondary) }
+                else { Text("Najlepiej działa, gdy Łapka leży w folderze Programy. Wyłączysz to tu albo w menu łapki na pasku menu.").font(.caption).foregroundStyle(.secondary) }
+            }
             Section("Zachowanie panelu") {
                 Picker("Tryb", selection: $store.data.settings.mode) { ForEach(PanelMode.allCases, id: \.self) { Text($0.label).tag($0) } }
                 if store.settings.mode == .followApp {

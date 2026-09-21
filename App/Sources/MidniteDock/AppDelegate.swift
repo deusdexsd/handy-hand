@@ -57,6 +57,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         for mode in PanelMode.allCases { sub.addItem(ClosureMenuItem(mode.label, checked: store.settings.mode == mode) { [weak self] in self?.store.settings.mode = mode }) }
         modes.submenu = sub; menu.addItem(modes)
         menu.addItem(ClosureMenuItem("Odśwież foldery") { [weak self] in self?.store.reindexAll() })
+        menu.addItem(ClosureMenuItem("Otwieraj przy logowaniu", checked: LoginItem.isOn) {
+            if let err = LoginItem.set(!LoginItem.isOn) {
+                let a = NSAlert(); a.messageText = "Nie udało się zmienić otwierania przy logowaniu"; a.informativeText = err; a.runModal()
+            }
+        })
         menu.addItem(.separator())
         let s = ClosureMenuItem("Ustawienia…") { [weak self] in self?.showSettings() }; s.keyEquivalent = ","
         menu.addItem(s)
