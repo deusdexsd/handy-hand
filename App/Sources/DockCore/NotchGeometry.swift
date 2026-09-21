@@ -83,7 +83,7 @@ public enum NotchGeometry {
 
 public enum NotchGlow {
     /// Siła podświetlenia notcha (0...1) wg odległości kursora od wysepki w punktach: pełna przy dotknięciu, zanika do `radius`.
-    public static func intensity(distance: Double, radius: Double = 26) -> Double {
+    public static func intensity(distance: Double, radius: Double = 140) -> Double {
         guard distance < radius else { return 0 }
         let t = 1 - max(0, distance) / radius
         return t * t * (3 - 2 * t)      // smoothstep
@@ -94,6 +94,13 @@ extension NotchGeometry {
     /// Okno uchwytu przy prawdziwym notchu: sam notch powiększony o margines na poświatę (u góry równo z krawędzią ekranu).
     public static func notchHandleFrame(_ m: ScreenMetrics, pad: CGFloat = 16) -> CGRect? {
         guard let n = notchRect(m) else { return nil }
-        return CGRect(x: n.minX - pad, y: n.minY - pad, width: n.width + 2 * pad, height: n.height + pad)
+        return windowAround(n, side: pad, below: pad, screen: m.frame)
+    }
+
+    /// Przezroczyste okno wokół wysepki/notcha (na poświatę i stworka): `side` z boków, `below` pod spodem, u góry równo z ekranem.
+    public static func windowAround(_ anchor: CGRect, side: CGFloat, below: CGFloat, screen: CGRect) -> CGRect {
+        var r = CGRect(x: anchor.minX - side, y: anchor.minY - below, width: anchor.width + 2 * side, height: anchor.height + below)
+        r.origin.x = max(screen.minX, min(r.minX, screen.maxX - r.width))
+        return r
     }
 }

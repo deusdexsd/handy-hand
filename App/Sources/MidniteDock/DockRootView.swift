@@ -6,6 +6,12 @@ import DockCore
 @MainActor
 final class PanelState: ObservableObject {
     @Published var glow: Double = 0
+    @Published var amount: Double = 0      // wysunięcie łapki / wychylenie głowy kotka (0...1)
+    @Published var angle: Double = 0       // obrót w stronę kursora (stopnie)
+    @Published var blink: Double = 0       // powieki kotka (0...1)
+    @Published var tipX: Double = 0        // łapka: dłoń względem barku (pt)
+    @Published var tipY: Double = -60      // domyślnie schowana nad dolną krawędzią notcha
+    @Published var shoulderX: Double = 0   // bark przesuwa się lekko w stronę kursora
     @Published var expanded = false
     @Published var atBottom = false
 }

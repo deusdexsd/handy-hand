@@ -330,9 +330,45 @@ final class ExportGlowTests: XCTestCase {
 
     func testGlowIntensityFallsOffSmoothly() {
         XCTAssertEqual(NotchGlow.intensity(distance: 0), 1)
-        XCTAssertEqual(NotchGlow.intensity(distance: 26), 0)
-        XCTAssertGreaterThan(NotchGlow.intensity(distance: 5), NotchGlow.intensity(distance: 15))
-        XCTAssertEqual(NotchGlow.intensity(distance: 100), 0)
+        XCTAssertEqual(NotchGlow.intensity(distance: 140), 0)
+        XCTAssertGreaterThan(NotchGlow.intensity(distance: 20), NotchGlow.intensity(distance: 90))
+        XCTAssertGreaterThan(NotchGlow.intensity(distance: 100), 0.05)     // pole reakcji jest duże, nie tylko tuż przy notchu
+        XCTAssertEqual(NotchGlow.intensity(distance: 500), 0)
+    }
+}
+
+final class ArmIKTests: XCTestCase {
+    func testSegmentsKeepTheirLengthAndReachTheTarget() {
+        let s = CGPoint(x: 0, y: 0)
+        let r = ArmIK.solve(shoulder: s, target: CGPoint(x: 60, y: 90), l1: 68, l2: 68)
+        XCTAssertEqual(hypot(r.elbow.x - s.x, r.elbow.y - s.y), 68, accuracy: 0.01)
+        XCTAssertEqual(hypot(r.tip.x - r.elbow.x, r.tip.y - r.elbow.y), 68, accuracy: 0.01)
+        XCTAssertEqual(r.tip.x, 60, accuracy: 0.01); XCTAssertEqual(r.tip.y, 90, accuracy: 0.01)
+    }
+
+    func testTargetBeyondReachIsClampedAlongTheSameDirection() {
+        let r = ArmIK.solve(shoulder: .zero, target: CGPoint(x: 0, y: 500), l1: 68, l2: 68)
+        XCTAssertLessThan(r.tip.y, 136); XCTAssertGreaterThan(r.tip.y, 135); XCTAssertEqual(r.tip.x, 0, accuracy: 0.01)
+    }
+
+    func testElbowBendsUpwardWhenReachingSideways() {
+        let r = ArmIK.solve(shoulder: .zero, target: CGPoint(x: -100, y: 60), l1: 68, l2: 68)
+        let straight = CGPoint(x: r.tip.x / 2, y: r.tip.y / 2)
+        XCTAssertLessThan(r.elbow.y, straight.y)            // łokieć nad linią bark-dłoń
+    }
+
+    func testElbowFloorKeepsTheElbowOutOfTheHiddenZone() {
+        let s = CGPoint(x: 0, y: 32)
+        let r = ArmIK.solve(shoulder: s, target: CGPoint(x: -100, y: 100), l1: 68, l2: 68, elbowFloor: 42)
+        XCTAssertGreaterThanOrEqual(r.elbow.y, 42)
+        XCTAssertEqual(hypot(r.elbow.x - s.x, r.elbow.y - s.y), 68, accuracy: 0.01)
+    }
+
+    func testStraightDownIsStableAndNeverNaN() {
+        let r = ArmIK.solve(shoulder: .zero, target: CGPoint(x: 0, y: 40), l1: 68, l2: 68)
+        XCTAssertFalse(r.elbow.x.isNaN || r.elbow.y.isNaN)
+        let z = ArmIK.solve(shoulder: .zero, target: .zero, l1: 68, l2: 68)
+        XCTAssertFalse(z.tip.x.isNaN || z.elbow.y.isNaN)
     }
 }
 

@@ -52,33 +52,40 @@ struct HandleView: View {
     @ObservedObject var state: PanelState
     let glowColor: Color
     var realNotch = false
-    var notchSize = CGSize(width: 200, height: 32)
+    var anchorSize = CGSize(width: 200, height: 32)      // rozmiar notcha / wysepki w środku przezroczystego okna
+    var effect: NotchEffect = .glow
+
     var body: some View {
-        let glow = expanded ? 0 : state.glow
-        if realNotch {
-            // Prawdziwy notch: nic nie rysujemy w spoczynku. Poświata wychodzi zza czarnego kształtu równego notchowi
-            // (nad fizycznym notchem nie ma pikseli, więc sam kształt jest niewidoczny).
-            UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10, style: .continuous)
-                .fill(Color.black)
-                .frame(width: notchSize.width - 2, height: notchSize.height)
-                .shadow(color: glowColor.opacity(0.95 * glow), radius: 9)
-                .shadow(color: glowColor.opacity(0.65 * glow), radius: 3)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        let glow = expanded || effect != .glow ? 0 : state.glow
+        ZStack(alignment: .top) {
+            if realNotch {
+                // Prawdziwy notch: w spoczynku nic. Poświata wychodzi zza czarnego kształtu równego notchowi
+                // (nad fizycznym notchem nie ma pikseli, więc sam kształt jest niewidoczny).
+                UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10, style: .continuous)
+                    .fill(Color.black).frame(width: anchorSize.width - 2, height: anchorSize.height)
+                    .shadow(color: glowColor.opacity(0.95 * glow), radius: 8 + 22 * glow)
+                    .shadow(color: glowColor.opacity(0.65 * glow), radius: 3 + 6 * glow)
+                    .animation(.easeOut(duration: 0.18), value: glow)
+            } else if showsCap {
+                let shape = UnevenRoundedRectangle(topLeadingRadius: atBottom ? 12 : 0, bottomLeadingRadius: atBottom ? 0 : 12,
+                                                   bottomTrailingRadius: atBottom ? 0 : 12, topTrailingRadius: atBottom ? 12 : 0, style: .continuous)
+                ZStack {
+                    shape.fill(Color.black)
+                    RadialGradient(colors: [glowColor.opacity(0.55 * glow), .clear], center: atBottom ? .top : .bottom, startRadius: 0, endRadius: 110).clipShape(shape)
+                    shape.strokeBorder(glowColor.opacity(0.8 * glow), lineWidth: 1)
+                    Image(systemName: "pawprint.fill").font(.system(size: 11))
+                        .foregroundStyle(Color.white.opacity(expanded || isPlaying ? 0.55 : 0.22 + 0.5 * glow))
+                }
+                .frame(width: anchorSize.width, height: anchorSize.height)
                 .animation(.easeOut(duration: 0.16), value: glow)
-        } else if showsCap {
-            let shape = UnevenRoundedRectangle(topLeadingRadius: atBottom ? 12 : 0, bottomLeadingRadius: atBottom ? 0 : 12,
-                                               bottomTrailingRadius: atBottom ? 0 : 12, topTrailingRadius: atBottom ? 12 : 0, style: .continuous)
-            ZStack {
-                shape.fill(Color.black)
-                RadialGradient(colors: [glowColor.opacity(0.55 * glow), .clear], center: atBottom ? .top : .bottom, startRadius: 0, endRadius: 110).clipShape(shape)
-                shape.strokeBorder(glowColor.opacity(0.8 * glow), lineWidth: 1)
-                Image(systemName: "pawprint.fill").font(.system(size: 11))
-                    .foregroundStyle(Color.white.opacity(expanded || isPlaying ? 0.55 : 0.22 + 0.5 * glow))
+            } else {
+                Capsule().fill(Color.white.opacity(expanded ? 0 : 0.55)).frame(height: 4).padding(.horizontal, 20)
             }
-            .animation(.easeOut(duration: 0.16), value: glow)
-        } else {
-            Capsule().fill(Color.white.opacity(expanded ? 0 : 0.55)).frame(height: 4).padding(.horizontal, 20)
+            if (effect == .paw || effect == .cat) && !expanded && (realNotch || showsCap) {
+                CreatureLayer(effect: effect, notch: anchorSize, state: state)
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
@@ -106,6 +113,7 @@ final class PanelController: NSObject {
         body.contentView = NSHostingView(rootView: DockRootView(store: store, panel: state))
         body.onKey = { [weak self] k in self?.handleKey(k) ?? false }
         rebuildHandle()
+        startEffectTimer()
 
         NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved]) { [weak self] _ in MainActor.assumeIsolated { self?.updateHover() } }
         NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved]) { [weak self] e in MainActor.assumeIsolated { self?.updateHover() }; return e }
@@ -147,7 +155,8 @@ final class PanelController: NSObject {
         var handleFrame: CGRect, bodyFrame = bodyFrame0
         if realNotchStyle, let n = NotchGeometry.notchRect(m), let hf = NotchGeometry.notchHandleFrame(m) {
             bodyFrame.origin.y = n.minY - bodySize.height          // panel wisi tuż pod notchem
-            return (hf, bodyFrame, false, false, n, true)
+            _ = hf
+            return (NotchGeometry.windowAround(n, side: 90, below: 150, screen: m.frame), bodyFrame, false, false, n, true)
         }
         if l.atBottom {
             handleFrame = CGRect(x: hx, y: m.frame.minY, width: hw, height: hh)
@@ -160,12 +169,14 @@ final class PanelController: NSObject {
             handleFrame = CGRect(x: hx, y: top - hh, width: hw, height: hh)
             bodyFrame.origin.y = top - bodySize.height
         }
-        return (handleFrame, bodyFrame, l.showsCap, l.atBottom, handleFrame, false)
+        // Góra-środek z wysepką: przezroczyste okno wokół niej na poświatę i stworka (klikanie przechodzi przez nie).
+        let win = (l.showsCap && !l.atBottom && s.placement == .topCenter) ? NotchGeometry.windowAround(handleFrame, side: 90, below: 150, screen: m.frame) : handleFrame
+        return (win, bodyFrame, l.showsCap, l.atBottom, handleFrame, false)
     }
 
     private func rebuildHandle() {
         guard let f = frames() else { return }
-        handle.contentView = NSHostingView(rootView: HandleView(showsCap: f.cap, atBottom: f.bottom, expanded: expanded, isPlaying: store.previewer.isPlaying, state: state, glowColor: Self.glowColor(store.settings.glowColor), realNotch: f.realNotch, notchSize: f.glowRect.size))
+        handle.contentView = NSHostingView(rootView: HandleView(showsCap: f.cap, atBottom: f.bottom, expanded: expanded, isPlaying: store.previewer.isPlaying, state: state, glowColor: Self.glowColor(store.settings.glowColor), realNotch: f.realNotch, anchorSize: f.glowRect.size, effect: store.settings.notchEffect))
         handle.setFrame(f.handle, display: true)
         state.atBottom = f.bottom
     }
@@ -188,7 +199,7 @@ final class PanelController: NSObject {
     private var handleKey = ""
     private func settingsChanged() {
         let s = store.settings
-        let key = "\(s.placement.rawValue)|\(s.virtualNotch.rawValue)|\(s.glowColor.rawValue)"
+        let key = "\(s.placement.rawValue)|\(s.virtualNotch.rawValue)|\(s.glowColor.rawValue)|\(s.notchEffect.rawValue)"
         if key != handleKey { handleKey = key; rebuildHandle() }      // rozmiar panelu zmienia się w trakcie rozciągania: uchwytu nie przebudowujemy
         apply(animated: false)
     }
@@ -241,7 +252,7 @@ final class PanelController: NSObject {
     /// Strefa reakcji: uchwyt razem z krawędzią ekranu za nim; po rozwinięciu także cały panel.
     private func hotZone() -> NSRect {
         guard let f = frames(), let m = metrics() else { return .zero }
-        var z = f.handle.insetBy(dx: -12, dy: -8)
+        var z = f.glowRect.insetBy(dx: -12, dy: -8)
         if f.bottom { z.size.height += z.minY - m.frame.minY; z.origin.y = m.frame.minY } else { z.size.height += max(0, m.frame.maxY - z.maxY) }
         if expanded { z = z.union(f.body.insetBy(dx: -10, dy: -10)) }
         return z
@@ -256,13 +267,87 @@ final class PanelController: NSObject {
         switch g { case .violet: Color(red: 0.72, green: 0.48, blue: 1.0); case .teal: Color(red: 0.36, green: 0.88, blue: 0.82); case .blue: Color(red: 0.36, green: 0.55, blue: 1.0) }
     }
 
-    /// Delikatne podświetlenie wysepki, gdy kursor zbliża się na kilka punktów.
+    /// Efekt przy notchu: poświata albo stworek reagują na odległość kursora (duże pole: ok. 140 pt od notcha).
     private func updateGlow() {
-        guard store.settings.notchGlow, !expanded, let h = frames()?.glowRect else { if state.glow != 0 { state.glow = 0 }; return }
+        let effect = store.settings.notchEffect
+        guard effect != .none, !expanded, let f = frames() else { resetEffect(); return }
+        let h = f.glowRect
         let p = NSEvent.mouseLocation
         let dx = max(h.minX - p.x, 0, p.x - h.maxX), dy = max(h.minY - p.y, 0, p.y - h.maxY)
-        let g = NotchGlow.intensity(distance: hypot(dx, dy), radius: 34)
-        if abs(g - state.glow) > 0.02 { state.glow = g }
+        let g = NotchGlow.intensity(distance: hypot(dx, dy))
+        switch effect {
+        case .glow: if abs(g - state.glow) > 0.02 { state.glow = g }
+        case .paw:
+            guard g > 0.02 else { if state.tipY > -30 && !ambientRunning { retractArm() }; return }
+            ambientTask?.cancel(); ambientRunning = false
+            // dłoń celuje w kursor: kierunek z barku, zasięg rośnie, im bliżej jest kursor
+            let vx = p.x - h.midX, vy = max(14, h.minY - p.y)
+            let dist = hypot(vx, vy), reach = min(130, max(46, dist * 0.9)) * (0.45 + 0.55 * g)
+            state.shoulderX = max(-55, min(55, vx * 0.12))
+            state.tipX = vx / dist * reach; state.tipY = vy / dist * reach
+        case .cat:
+            guard g > 0.02 else { if state.amount != 0 && !ambientRunning { state.amount = 0; state.angle = 0 }; return }
+            ambientTask?.cancel(); ambientRunning = false
+            // kąt względem „barku” na dolnej krawędzi notcha: mysz po prawej = łapka skręca w prawo
+            let ang = atan2(p.x - h.midX, max(8, h.minY - p.y)) * 180 / .pi
+            state.angle = max(-55, min(55, ang)) * (effect == .cat ? 0.5 : 1)
+            state.amount = effect == .paw ? 0.35 + 0.65 * g : 0.3 + 0.6 * g
+        case .none: break
+        }
+    }
+
+    private func retractArm() { state.tipX = 0; state.tipY = -60; state.shoulderX = 0 }
+
+    private func resetEffect() {
+        ambientTask?.cancel(); ambientRunning = false
+        if state.glow != 0 { state.glow = 0 }
+        if state.amount != 0 || state.angle != 0 { state.amount = 0; state.angle = 0 }
+        if state.tipY > -30 { retractArm() }
+    }
+
+    // Losowe „życie” stworka, gdy nikt nie jest blisko: co kilkanaście sekund wychyla się, macha albo mruga.
+    private var ambientTask: Task<Void, Never>?
+    private var ambientRunning = false
+    private var nextAmbient = Date().addingTimeInterval(8)
+    private var nextBlink = Date()
+    private var effectTimer: Timer?
+
+    func startEffectTimer() {
+        effectTimer?.invalidate()
+        effectTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] _ in MainActor.assumeIsolated { self?.effectTick() } }
+    }
+
+    private func effectTick() {
+        let effect = store.settings.notchEffect
+        guard effect == .paw || effect == .cat, !expanded else { return }
+        let now = Date()
+        if state.amount > 0.25, now >= nextBlink, effect == .cat {       // mruganie, gdy głowa jest wychylona
+            nextBlink = now.addingTimeInterval(Double.random(in: 1.6...4.5))
+            Task { @MainActor in state.blink = 1; try? await Task.sleep(nanoseconds: 130_000_000); state.blink = 0 }
+        }
+        if (effect == .paw ? state.tipY < -30 : state.amount < 0.05), !ambientRunning, now >= nextAmbient {
+            nextAmbient = now.addingTimeInterval(Double.random(in: 12...30))
+            ambientRunning = true
+            ambientTask = Task { @MainActor in
+                if effect == .paw {
+                    // macha: dłoń zatacza łuki na boki, jak w filmie
+                    for (x, y, sh) in [(-70.0, 70.0, -20.0), (60.0, 95.0, 20.0), (-45.0, 105.0, -10.0), (35.0, 80.0, 10.0)] {
+                        state.shoulderX = sh; state.tipX = x; state.tipY = y
+                        try? await Task.sleep(nanoseconds: 520_000_000); if Task.isCancelled { return }
+                    }
+                    retractArm()
+                } else {
+                    state.amount = 0.62; state.angle = -6
+                    try? await Task.sleep(nanoseconds: 700_000_000); if Task.isCancelled { return }
+                    state.blink = 1; try? await Task.sleep(nanoseconds: 130_000_000); state.blink = 0
+                    try? await Task.sleep(nanoseconds: 1_500_000_000); if Task.isCancelled { return }
+                    state.angle = 6; state.blink = 1; try? await Task.sleep(nanoseconds: 130_000_000); state.blink = 0
+                    try? await Task.sleep(nanoseconds: 900_000_000); if Task.isCancelled { return }
+                }
+                if effect != .paw { state.amount = 0; state.angle = 0 }
+                ambientRunning = false
+            }
+        }
     }
 
     private func updateHover() {
@@ -401,7 +486,12 @@ enum SnapshotRunner {
             rep.draw(in: NSRect(origin: .zero, size: hv.bounds.size)); img.unlockFocus()
             save(img, "\(dir)/\(name).png"); w.orderOut(nil)
         }
-        await viewShot("09b-handle-real-notch", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: { let st = PanelState(); st.glow = 0.9; return st }(), glowColor: PanelController.glowColor(.violet), realNotch: true, notchSize: CGSize(width: 220, height: 38)).frame(width: 252, height: 54).background(Color(white: 0.55)), 252, 54)
+        await viewShot("09b-handle-real-notch", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: { let st = PanelState(); st.glow = 0.9; return st }(), glowColor: PanelController.glowColor(.violet), realNotch: true, anchorSize: CGSize(width: 220, height: 38)).frame(width: 252, height: 54).background(Color(white: 0.55)), 252, 54)
+        for (name, eff, amt, ang, blink) in [("paw-reach", NotchEffect.paw, 0.95, 22.0, 0.0), ("paw-side", .paw, 0.9, -30.0, 0.0), ("cat-peek", .cat, 0.8, -8.0, 0.0), ("cat-blink", .cat, 0.8, 0.0, 1.0)] {
+            let st = PanelState(); st.amount = amt; st.angle = ang; st.blink = blink
+            if eff == .paw { st.tipX = ang > 0 ? 55 : -95; st.tipY = ang > 0 ? 115 : 70; st.shoulderX = ang > 0 ? 8 : -12 }
+            await viewShot("09c-\(name)", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: st, glowColor: PanelController.glowColor(.violet), realNotch: true, anchorSize: CGSize(width: 220, height: 38), effect: eff).frame(width: 400, height: 188).background(Color(white: 0.62)), 400, 148)
+        }
         await settingsShot("10-set-general", GeneralTab(store: store))
         await settingsShot("11-set-sources", SourcesTab(store: store))
         await settingsShot("12-set-appearance", AppearanceTab(store: store))

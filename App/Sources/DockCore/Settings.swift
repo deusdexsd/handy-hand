@@ -29,6 +29,12 @@ public enum GlowChoice: String, Codable, CaseIterable, Sendable {
     public var label: String { switch self { case .violet: "Fioletowy"; case .teal: "Turkusowy"; case .blue: "Niebieski" } }
 }
 
+/// Co dzieje się przy notchu, gdy kursor się zbliża.
+public enum NotchEffect: String, Codable, CaseIterable, Sendable {
+    case none, glow, paw, cat
+    public var label: String { switch self { case .none: "Brak"; case .glow: "Podświetlenie"; case .paw: "Łapka"; case .cat: "Kotek" } }
+}
+
 public enum CategoryLayout: String, Codable, CaseIterable, Sendable {
     case sidebar, chips
     public var label: String { self == .sidebar ? "Pionowy (sidebar)" : "Poziomy (pigułki)" }
@@ -60,12 +66,13 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var bigMediaPreview: Bool = false
     /// Klawisze 1-4: jaki typ pokazują (filtr w bieżącej kategorii).
     public var quickKeys: [MediaClass] = [.sfx, .music, .video, .image]
-    public var notchGlow: Bool = true
+    public var notchGlow: Bool = true      // zastąpione przez notchEffect (zostaje dla wczytania starych zapisów)
+    public var notchEffect: NotchEffect = .glow
     public var glowColor: GlowChoice = .violet
     public var strictDuplicates: Bool = false
     public init() {}
 
-    enum CodingKeys: String, CodingKey { case autoplayOnSelect, waveformAutoScale, bigMediaPreview, quickKeys, notchGlow, glowColor, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
+    enum CodingKeys: String, CodingKey { case autoplayOnSelect, waveformAutoScale, bigMediaPreview, quickKeys, notchGlow, notchEffect, glowColor, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
     /// Tolerancyjne dekodowanie: brakujący klucz (np. po aktualizacji) = wartość domyślna, a nie utrata ustawień.
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -87,6 +94,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         let qk = try c.decodeIfPresent([MediaClass].self, forKey: .quickKeys) ?? def.quickKeys
         quickKeys = qk.count == 4 ? qk : def.quickKeys
         notchGlow = try c.decodeIfPresent(Bool.self, forKey: .notchGlow) ?? def.notchGlow
+        notchEffect = try c.decodeIfPresent(NotchEffect.self, forKey: .notchEffect) ?? (notchGlow ? .glow : .none)
         glowColor = try c.decodeIfPresent(GlowChoice.self, forKey: .glowColor) ?? def.glowColor
         strictDuplicates = try c.decodeIfPresent(Bool.self, forKey: .strictDuplicates) ?? def.strictDuplicates
     }

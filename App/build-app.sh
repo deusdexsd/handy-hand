@@ -12,6 +12,7 @@ APP=$BUILD/MidniteDock.app
 rm -rf $APP && mkdir -p $APP/Contents/MacOS
 cp "$BIN" $APP/Contents/MacOS/MidniteDock
 mkdir -p $APP/Contents/Resources && cp Resources/AppIcon.icns $APP/Contents/Resources/AppIcon.icns
+mkdir -p $APP/Contents/Resources/creatures && cp Resources/creatures/*.svg $APP/Contents/Resources/creatures/
 cat > $APP/Contents/Info.plist <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -29,5 +30,6 @@ cat > $APP/Contents/Info.plist <<PLIST
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
 PLIST
+xattr -cr $APP
 codesign --force --sign - $APP
 echo "APP: $APP"

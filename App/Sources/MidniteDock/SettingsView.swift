@@ -119,11 +119,13 @@ struct AppearanceTab: View {
             Section("Źródła") {
                 Toggle("Subtelne kolory ikon źródeł w sidebarze", isOn: $store.data.settings.sourceTints)
             }
-            Section("Podświetlenie notcha") {
-                Toggle("Delikatnie podświetlaj notch, gdy kursor jest blisko", isOn: $store.data.settings.notchGlow)
-                if store.settings.notchGlow {
-                    Picker("Kolor", selection: $store.data.settings.glowColor) { ForEach(GlowChoice.allCases, id: \.self) { Text($0.label).tag($0) } }.pickerStyle(.segmented)
+            Section("Notch: reakcja na kursor") {
+                Picker("Efekt", selection: $store.data.settings.notchEffect) { ForEach(NotchEffect.allCases, id: \.self) { Text($0.label).tag($0) } }.pickerStyle(.segmented)
+                if store.settings.notchEffect == .glow {
+                    Picker("Kolor poświaty", selection: $store.data.settings.glowColor) { ForEach(GlowChoice.allCases, id: \.self) { Text($0.label).tag($0) } }.pickerStyle(.segmented)
                 }
+                Text("Łapka i kotek wychylają się spod notcha, gdy kursor jest blisko (ok. 140 pt), a czasem sami, gdy nikogo nie ma. Działają przy górnym środku ekranu. „Brak” nie zużywa nic.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Section("Waveform") {
                 Toggle("Skala automatyczna (najdłuższy dźwięk w widoku = pełna szerokość)", isOn: $store.data.settings.waveformAutoScale)
