@@ -1,0 +1,7 @@
+.build/
+dist/
+*.log
+logs/
+Phase0/TestMedia/
+Phase0/Output/
+.DS_Store
