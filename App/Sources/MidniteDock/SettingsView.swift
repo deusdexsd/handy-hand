@@ -124,7 +124,7 @@ struct AppearanceTab: View {
                 if store.settings.notchEffect == .glow {
                     Picker("Kolor poświaty", selection: $store.data.settings.glowColor) { ForEach(GlowChoice.allCases, id: \.self) { Text($0.label).tag($0) } }.pickerStyle(.segmented)
                 }
-                Text("Łapka i kotek wychylają się spod notcha, gdy kursor jest blisko (ok. 140 pt), a czasem sami, gdy nikogo nie ma. Działają przy górnym środku ekranu. „Brak” nie zużywa nic.")
+                Text("Łapka wychyla się spod notcha w stronę kursora, gdy jest blisko (ok. 140 pt), a czasem sama macha, gdy nikogo nie ma. Działa przy górnym środku ekranu. Symulacja chodzi tylko, gdy łapka jest widoczna; „Brak” nie zużywa nic.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Waveform") {

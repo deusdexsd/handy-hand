@@ -169,7 +169,8 @@ final class ClassAndImageTests: XCTestCase {
         let u = UserDataStore(url: url).load()
         XCTAssertEqual(u.org.durationRanges.first { $0.id.uuidString == rid }?.mediaClass, .sfx)
         XCTAssertEqual(u.org.durationRanges.filter { $0.mediaClass == .music }.count, 3)
-        XCTAssertEqual(u.schemaVersion, 2)
+        XCTAssertEqual(u.schemaVersion, 3)
+        XCTAssertEqual(u.settings.notchEffect, .paw)
         // po zapisie i ponownym odczycie nie dokładamy muzyki drugi raz
         UserDataStore(url: url).save(u)
         XCTAssertEqual(UserDataStore(url: url).load().org.durationRanges.filter { $0.mediaClass == .music }.count, 3)
@@ -369,6 +370,48 @@ final class ArmIKTests: XCTestCase {
         XCTAssertFalse(r.elbow.x.isNaN || r.elbow.y.isNaN)
         let z = ArmIK.solve(shoulder: .zero, target: .zero, l1: 68, l2: 68)
         XCTAssertFalse(z.tip.x.isNaN || z.elbow.y.isNaN)
+    }
+}
+
+final class RopeArmTests: XCTestCase {
+    func run(_ rope: inout RopeArm, _ target: CGPoint, steps: Int = 240) {
+        for _ in 0..<steps { rope.step(dt: 1.0 / 60, shoulder: CGPoint(x: 0, y: 0), target: target) }
+    }
+
+    func testTipConvergesToReachableTargetAndLengthsHold() {
+        var r = RopeArm(shoulder: .zero)
+        run(&r, CGPoint(x: 40, y: 60))
+        XCTAssertEqual(r.pts.last!.x, 40, accuracy: 6); XCTAssertEqual(r.pts.last!.y, 60, accuracy: 8)
+        for i in 0..<(r.count - 1) { XCTAssertEqual(hypot(r.pts[i + 1].x - r.pts[i].x, r.pts[i + 1].y - r.pts[i].y), r.segLen, accuracy: r.segLen * 0.06) }
+    }
+
+    func testOvershootsAndSwingsInsteadOfSnapping() {
+        var r = RopeArm(shoulder: .zero)
+        run(&r, CGPoint(x: 0, y: 60), steps: 240)
+        r.step(dt: 1.0 / 60, shoulder: .zero, target: CGPoint(x: 70, y: 40))          // nagły skok celu w bok
+        var maxLag = 0.0
+        for _ in 0..<6 { r.step(dt: 1.0 / 60, shoulder: .zero, target: CGPoint(x: 70, y: 40)); maxLag = max(maxLag, Double(70 - r.pts.last!.x)) }
+        XCTAssertGreaterThan(maxLag, 10)                                              // po kilku klatkach koniec jeszcze dobiega (bezwładność)
+        run(&r, CGPoint(x: 70, y: 40), steps: 300)
+        XCTAssertEqual(r.pts.last!.x, 70, accuracy: 8)
+    }
+
+    func testBendsIntoAnArcNotAStraightStick() {
+        var r = RopeArm(shoulder: .zero)
+        run(&r, CGPoint(x: 60, y: 50), steps: 300)
+        let a = r.pts[0], b = r.pts[r.count - 1]
+        let mid = r.pts[r.count / 2]
+        let chord = hypot(b.x - a.x, b.y - a.y)
+        let dist = abs((b.y - a.y) * mid.x - (b.x - a.x) * mid.y + b.x * a.y - b.y * a.x) / chord    // odległość środka od cięciwy
+        XCTAssertGreaterThan(dist, 1.5)                                               // zwis i giętkość: nie idealnie prosta
+    }
+
+    func testUnreachableTargetAndNoNaN() {
+        var r = RopeArm(shoulder: .zero)
+        run(&r, CGPoint(x: 900, y: 900), steps: 200)
+        XCTAssertTrue(r.pts.allSatisfy { !$0.x.isNaN && !$0.y.isNaN })
+        XCTAssertLessThanOrEqual(hypot(r.pts.last!.x, r.pts.last!.y), r.maxReach + 6)
+        XCTAssertEqual(r.smoothPoints().count, (r.count - 1) * 4 + 1)
     }
 }
 

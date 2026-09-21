@@ -81,8 +81,8 @@ struct HandleView: View {
             } else {
                 Capsule().fill(Color.white.opacity(expanded ? 0 : 0.55)).frame(height: 4).padding(.horizontal, 20)
             }
-            if (effect == .paw || effect == .cat) && !expanded && (realNotch || showsCap) {
-                CreatureLayer(effect: effect, notch: anchorSize, state: state)
+            if effect == .paw && !expanded && (realNotch || showsCap) {
+                CreatureLayer(notch: anchorSize, state: state)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -267,12 +267,20 @@ final class PanelController: NSObject {
         switch g { case .violet: Color(red: 0.72, green: 0.48, blue: 1.0); case .teal: Color(red: 0.36, green: 0.88, blue: 0.82); case .blue: Color(red: 0.36, green: 0.55, blue: 1.0) }
     }
 
-    /// Efekt przy notchu: poświata albo stworek reagują na odległość kursora (duże pole: ok. 140 pt od notcha).
+    var debugMouse: CGPoint?
+    func debugUpdateEffect() { updateGlow() }
+    func debugGlowRect() -> CGRect? { frames()?.glowRect }
+    func handleSnapshot() -> NSImage? {
+        guard let v = handle.contentView, let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds) else { return nil }
+        v.cacheDisplay(in: v.bounds, to: rep); let img = NSImage(size: v.bounds.size); img.addRepresentation(rep); return img
+    }
+
+    /// Efekt przy notchu: poświata albo łapka reagują na odległość kursora (duże pole: ok. 140 pt od notcha).
     private func updateGlow() {
         let effect = store.settings.notchEffect
         guard effect != .none, !expanded, let f = frames() else { resetEffect(); return }
         let h = f.glowRect
-        let p = NSEvent.mouseLocation
+        let p = debugMouse ?? NSEvent.mouseLocation
         let dx = max(h.minX - p.x, 0, p.x - h.maxX), dy = max(h.minY - p.y, 0, p.y - h.maxY)
         let g = NotchGlow.intensity(distance: hypot(dx, dy))
         switch effect {
@@ -282,71 +290,50 @@ final class PanelController: NSObject {
             ambientTask?.cancel(); ambientRunning = false
             // dłoń celuje w kursor: kierunek z barku, zasięg rośnie, im bliżej jest kursor
             let vx = p.x - h.midX, vy = max(14, h.minY - p.y)
-            let dist = hypot(vx, vy), reach = min(130, max(46, dist * 0.9)) * (0.45 + 0.55 * g)
-            state.shoulderX = max(-55, min(55, vx * 0.12))
+            let dist = hypot(vx, vy), reach = min(84, max(38, dist * 0.8)) * (0.5 + 0.5 * g)
+            state.armActive = true
+            state.shoulderX = max(-45, min(45, vx * 0.1))
             state.tipX = vx / dist * reach; state.tipY = vy / dist * reach
-        case .cat:
-            guard g > 0.02 else { if state.amount != 0 && !ambientRunning { state.amount = 0; state.angle = 0 }; return }
-            ambientTask?.cancel(); ambientRunning = false
-            // kąt względem „barku” na dolnej krawędzi notcha: mysz po prawej = łapka skręca w prawo
-            let ang = atan2(p.x - h.midX, max(8, h.minY - p.y)) * 180 / .pi
-            state.angle = max(-55, min(55, ang)) * (effect == .cat ? 0.5 : 1)
-            state.amount = effect == .paw ? 0.35 + 0.65 * g : 0.3 + 0.6 * g
         case .none: break
         }
     }
 
-    private func retractArm() { state.tipX = 0; state.tipY = -60; state.shoulderX = 0 }
+    private func retractArm() {
+        state.tipX = 0; state.tipY = -60; state.shoulderX = 0
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_600_000_000)
+            if state.tipY < -30 { state.armActive = false; state.sim.last = nil }      // schowana: zatrzymujemy symulację
+        }
+    }
 
     private func resetEffect() {
         ambientTask?.cancel(); ambientRunning = false
         if state.glow != 0 { state.glow = 0 }
-        if state.amount != 0 || state.angle != 0 { state.amount = 0; state.angle = 0 }
         if state.tipY > -30 { retractArm() }
     }
 
-    // Losowe „życie” stworka, gdy nikt nie jest blisko: co kilkanaście sekund wychyla się, macha albo mruga.
+    // Losowe „życie” łapki, gdy nikt nie jest blisko: co kilkanaście sekund wychyla się i macha na boki.
     private var ambientTask: Task<Void, Never>?
     private var ambientRunning = false
     private var nextAmbient = Date().addingTimeInterval(8)
-    private var nextBlink = Date()
     private var effectTimer: Timer?
 
     func startEffectTimer() {
         effectTimer?.invalidate()
-        effectTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] _ in MainActor.assumeIsolated { self?.effectTick() } }
+        effectTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in MainActor.assumeIsolated { self?.effectTick() } }
     }
 
     private func effectTick() {
-        let effect = store.settings.notchEffect
-        guard effect == .paw || effect == .cat, !expanded else { return }
-        let now = Date()
-        if state.amount > 0.25, now >= nextBlink, effect == .cat {       // mruganie, gdy głowa jest wychylona
-            nextBlink = now.addingTimeInterval(Double.random(in: 1.6...4.5))
-            Task { @MainActor in state.blink = 1; try? await Task.sleep(nanoseconds: 130_000_000); state.blink = 0 }
-        }
-        if (effect == .paw ? state.tipY < -30 : state.amount < 0.05), !ambientRunning, now >= nextAmbient {
-            nextAmbient = now.addingTimeInterval(Double.random(in: 12...30))
-            ambientRunning = true
-            ambientTask = Task { @MainActor in
-                if effect == .paw {
-                    // macha: dłoń zatacza łuki na boki, jak w filmie
-                    for (x, y, sh) in [(-70.0, 70.0, -20.0), (60.0, 95.0, 20.0), (-45.0, 105.0, -10.0), (35.0, 80.0, 10.0)] {
-                        state.shoulderX = sh; state.tipX = x; state.tipY = y
-                        try? await Task.sleep(nanoseconds: 520_000_000); if Task.isCancelled { return }
-                    }
-                    retractArm()
-                } else {
-                    state.amount = 0.62; state.angle = -6
-                    try? await Task.sleep(nanoseconds: 700_000_000); if Task.isCancelled { return }
-                    state.blink = 1; try? await Task.sleep(nanoseconds: 130_000_000); state.blink = 0
-                    try? await Task.sleep(nanoseconds: 1_500_000_000); if Task.isCancelled { return }
-                    state.angle = 6; state.blink = 1; try? await Task.sleep(nanoseconds: 130_000_000); state.blink = 0
-                    try? await Task.sleep(nanoseconds: 900_000_000); if Task.isCancelled { return }
-                }
-                if effect != .paw { state.amount = 0; state.angle = 0 }
-                ambientRunning = false
+        guard store.settings.notchEffect == .paw, !expanded, state.tipY < -30, !ambientRunning, Date() >= nextAmbient else { return }
+        nextAmbient = Date().addingTimeInterval(Double.random(in: 12...30))
+        ambientRunning = true
+        ambientTask = Task { @MainActor in
+            state.armActive = true
+            for (x, y, sh) in [(-48.0, 56.0, -15.0), (42.0, 72.0, 15.0), (-34.0, 76.0, -8.0), (26.0, 60.0, 8.0)] {
+                state.shoulderX = sh; state.tipX = x; state.tipY = y
+                try? await Task.sleep(nanoseconds: 620_000_000); if Task.isCancelled { return }
             }
+            retractArm(); ambientRunning = false
         }
     }
 
@@ -487,10 +474,16 @@ enum SnapshotRunner {
             save(img, "\(dir)/\(name).png"); w.orderOut(nil)
         }
         await viewShot("09b-handle-real-notch", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: { let st = PanelState(); st.glow = 0.9; return st }(), glowColor: PanelController.glowColor(.violet), realNotch: true, anchorSize: CGSize(width: 220, height: 38)).frame(width: 252, height: 54).background(Color(white: 0.55)), 252, 54)
-        for (name, eff, amt, ang, blink) in [("paw-reach", NotchEffect.paw, 0.95, 22.0, 0.0), ("paw-side", .paw, 0.9, -30.0, 0.0), ("cat-peek", .cat, 0.8, -8.0, 0.0), ("cat-blink", .cat, 0.8, 0.0, 1.0)] {
-            let st = PanelState(); st.amount = amt; st.angle = ang; st.blink = blink
-            if eff == .paw { st.tipX = ang > 0 ? 55 : -95; st.tipY = ang > 0 ? 115 : 70; st.shoulderX = ang > 0 ? 8 : -12 }
-            await viewShot("09c-\(name)", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: st, glowColor: PanelController.glowColor(.violet), realNotch: true, anchorSize: CGSize(width: 220, height: 38), effect: eff).frame(width: 400, height: 188).background(Color(white: 0.62)), 400, 148)
+        for (name, tx, ty, sh, jump) in [("paw-settled", 40.0, 60.0, 8.0, false), ("paw-swing", 62.0, 44.0, 10.0, true), ("paw-left", -58.0, 52.0, -12.0, false)] {
+            let st = PanelState(); st.armActive = true; st.tipX = tx; st.tipY = ty; st.shoulderX = sh
+            let shoulder = CGPoint(x: 200 + sh, y: 38 - 6)
+            st.sim.rope = RopeArm(shoulder: shoulder); st.sim.last = Date()
+            if jump {   // poza „w locie”: ramię ustalone w dół, cel skacze w bok i kilka klatek później linia jeszcze dobiega
+                for _ in 0..<240 { st.sim.rope.step(dt: 1.0 / 60, shoulder: shoulder, target: CGPoint(x: shoulder.x, y: shoulder.y + 60)) }
+                for _ in 0..<7 { st.sim.rope.step(dt: 1.0 / 60, shoulder: shoulder, target: CGPoint(x: shoulder.x + tx, y: shoulder.y + ty)) }
+            } else { for _ in 0..<300 { st.sim.rope.step(dt: 1.0 / 60, shoulder: shoulder, target: CGPoint(x: shoulder.x + tx, y: shoulder.y + ty)) } }
+            st.sim.last = Date().addingTimeInterval(0.0001)
+            await viewShot("09c-\(name)", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: st, glowColor: PanelController.glowColor(.violet), realNotch: true, anchorSize: CGSize(width: 220, height: 38), effect: .paw).frame(width: 400, height: 188).background(Color(white: 0.62)), 400, 188)
         }
         await settingsShot("10-set-general", GeneralTab(store: store))
         await settingsShot("11-set-sources", SourcesTab(store: store))
@@ -665,6 +658,16 @@ enum SelfTest {
         print("SELF 27 duży podgląd na dole włączony: primary=\(store.primary?.name ?? "-") ustawienie=\(store.settings.bigMediaPreview)")
         store.data.settings.bigMediaPreview = false
         store.previewer.pause(); store.select(category: .all)
+        // Łapka w prawdziwym oknie uchwytu: symulowany kursor blisko notcha, potem zrzut zawartości okna
+        store.settings.mode = .hover; store.settings.placement = .topCenter; store.settings.notchEffect = .paw; await wait(0.8)
+        if let gr = controller.debugGlowRect() {
+            controller.debugMouse = CGPoint(x: gr.midX + 70, y: gr.minY - 75); controller.debugUpdateEffect(); await wait(1.4)
+            print("SELF 31 łapka: cel=(\(Int(controller.state.tipX)),\(Int(controller.state.tipY))) aktywna=\(controller.state.armActive) koniec liny=(\(Int(controller.state.sim.rope.pts.last?.x ?? 0)),\(Int(controller.state.sim.rope.pts.last?.y ?? 0))) okno uchwytu=\(controller.debugState().split(separator: " ")[3])")
+            SnapshotRunner.save(controller.handleSnapshot(), "/tmp/lapka-live-handle.png")
+            controller.debugMouse = CGPoint(x: gr.midX + 900, y: gr.minY - 900); controller.debugUpdateEffect(); await wait(2.0)
+            print("SELF 31b po odjechaniu: cel Y=\(Int(controller.state.tipY)) aktywna=\(controller.state.armActive)")
+            controller.debugMouse = nil
+        }
         // Zapis na dysk
         store.settings.accent = .violet; store.settings.placement = .topRight
         store.newCollection(name: "Testowa"); store.flush()

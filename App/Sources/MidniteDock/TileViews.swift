@@ -123,7 +123,7 @@ struct TileView: View {
             WaveformLane(item: item, peaks: waveforms.peaks(for: item), scale: store.waveformScale(for: item),
                          shade: store.shade(item), accentPlayed: nil, accent: accent, ticks: true)
         } else if let img = thumbs.image(for: item) {
-            Image(nsImage: img).resizable().scaledToFill().frame(height: 64).clipped()
+            Image(nsImage: img).resizable().scaledToFit().frame(maxWidth: .infinity).frame(height: 64).background(Color.black.opacity(0.22))
                 .overlay(alignment: .bottomTrailing) {
                     if item.kind == .video { Text(Fmt.duration(item.duration)).font(.system(size: 10, weight: .medium)).monospacedDigit()
                         .padding(.horizontal, 5).padding(.vertical, 1.5).background(.ultraThinMaterial, in: Capsule()).padding(4) }

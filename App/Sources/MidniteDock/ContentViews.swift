@@ -129,9 +129,9 @@ struct PreviewBar: View {
             } else if let it = previewer.item, it.kind == .image {
                 HStack(spacing: 10) {
                     Group {
-                        if let img = thumbs.image(for: it) { Image(nsImage: img).resizable().scaledToFill() } else { ZStack { Color.primary.opacity(0.08); if thumbs.hasFailed(it) { Image(systemName: "photo").foregroundStyle(.tertiary) } else { ProgressView().controlSize(.mini) } } }
+                        if let img = thumbs.image(for: it) { Image(nsImage: img).resizable().scaledToFit() } else { ZStack { Color.primary.opacity(0.08); if thumbs.hasFailed(it) { Image(systemName: "photo").foregroundStyle(.tertiary) } else { ProgressView().controlSize(.mini) } } }
                     }
-                    .frame(width: 96, height: 54).clipShape(RoundedRectangle(cornerRadius: 6))
+                    .frame(width: 96, height: 54).background(Color.black.opacity(0.22)).clipShape(RoundedRectangle(cornerRadius: 6))
                     VStack(alignment: .leading, spacing: 2) {
                         Text(it.name).font(.system(size: 12, weight: .medium)).lineLimit(1)
                         Text("\(it.pixelWidth ?? 0)×\(it.pixelHeight ?? 0) · \(ByteCountFormatter.string(fromByteCount: it.size, countStyle: .file)) · \(it.ext.uppercased())")

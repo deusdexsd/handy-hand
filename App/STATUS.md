@@ -25,7 +25,7 @@ Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`), bo s
 | Miniatury | limit równoległych dekodowań, cache błędów (koniec pętli ponawiania), pasek podglądu odświeża się po wczytaniu | autotest |
 | Skróty w panelu | 1–4 filtr typu w bieżącej kategorii (mapowanie w Ustawieniach → Skróty; ponowne = zdejmuje), Shift+1–4 zmienia typ zaznaczonego dźwięku, 5 ulubione, 6 czyści filtry; spacja: dźwięk = odsłuch, obraz/wideo = większy podgląd | autotest |
 | Eksport | do folderu „Łapka – eksport”: układ Typ i długość albo Kolekcje; kopiuj albo dowiązania; nie nadpisuje | 2 testy |
-| Efekt przy notchu | Ustawienia → Wygląd: Brak / Podświetlenie (3 kolory) / Łapka / Kotek; pole reakcji ok. 140 pt; łapka = dwuczłonowe ramię (odwrócona kinematyka, sprężyna) z małą łapką, kotek = głowa z białymi oczami i mruganiem; losowe „życie” co 12–30 s | 5 testów IK + renderowanie póz; **ruch na żywo niesprawdzony** |
+| Efekt przy notchu | Ustawienia → Wygląd: Brak / Podświetlenie (3 kolory) / Łapka (domyślnie); pole reakcji ok. 140 pt; łapka = giętkie ramię jako lina z fizyką (bezwładność, sprężyste dobieganie, zwis), zwężające się, z pękatą łapką; losowe machnięcia co 12–30 s; kotek usunięty | 9 testów (IK, lina), renderowanie póz, test w prawdziwym oknie z symulowanym kursorem; **ruch na żywo niesprawdzony** |
 | Układy | zapisane układy (kategoria + filtry + sortowanie + widok) jednym kliknięciem | testy |
 | Trwałość | zapis JSON tolerancyjny na brakujące klucze (aktualizacje nie kasują danych) | testy + autotest |
 | Wygląd | neutralny, jeden akcent (do wyboru), opcjonalne subtelne kolory źródeł, jasny/ciemny, natywny materiał (NSVisualEffectView), SF Symbols, sprężyny, reduce motion / reduce transparency | render |
@@ -39,7 +39,7 @@ Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`), bo s
 
 ## Odłożone / odrzucone
 
-- łapka wystająca z notcha w stronę kursora (wymaga narysowanej sylwetki i animacji; zostawione),
+- kotek (usunięty na prośbę Davida),
 - czarna dziura, sekwencje/compound przez FCPXML (odpuszczone), więcej kolorów (niepotrzebne).
 
 ## Jeszcze nie ma

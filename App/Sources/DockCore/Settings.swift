@@ -31,8 +31,10 @@ public enum GlowChoice: String, Codable, CaseIterable, Sendable {
 
 /// Co dzieje się przy notchu, gdy kursor się zbliża.
 public enum NotchEffect: String, Codable, CaseIterable, Sendable {
-    case none, glow, paw, cat
-    public var label: String { switch self { case .none: "Brak"; case .glow: "Podświetlenie"; case .paw: "Łapka"; case .cat: "Kotek" } }
+    case none, glow, paw
+    public var label: String { switch self { case .none: "Brak"; case .glow: "Podświetlenie"; case .paw: "Łapka" } }
+    /// Nieznana wartość (np. usunięty „cat” ze starego zapisu) nie może wywalić całych ustawień.
+    public init(from d: Decoder) throws { self = NotchEffect(rawValue: try d.singleValueContainer().decode(String.self)) ?? .glow }
 }
 
 public enum CategoryLayout: String, Codable, CaseIterable, Sendable {
@@ -105,7 +107,7 @@ public struct UserData: Codable, Equatable, Sendable {
     public var sources: [Source] = []
     public var org = Organization()
     public var lastConfig = ViewConfig()
-    public var schemaVersion = 2
+    public var schemaVersion = 3
     public init() {}
 
     enum CodingKeys: String, CodingKey { case settings, sources, org, lastConfig, schemaVersion }
@@ -119,7 +121,8 @@ public struct UserData: Codable, Equatable, Sendable {
         if v < 2 {   // v2: audio dzieli się na SFX i muzykę; zapisane wcześniej przedziały audio stały się SFX, dokładamy przedziały muzyki
             if !org.durationRanges.contains(where: { $0.mediaClass == .music }) { org.durationRanges += DurationRange.musicDefaults() }
         }
-        schemaVersion = 2
+        if v < 3 { settings.notchEffect = .paw }      // v3: łapka jako efekt domyślny (to o nią prosił David)
+        schemaVersion = 3
     }
 }
 
