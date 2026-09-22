@@ -105,8 +105,8 @@ struct SourcesTab: View {
                 }
             }
             Section {
-                HStack {
-                    Menu(L("Dodaj…", "Add…")) { AddMenuItems(store: store) }.fixedSize()
+                HStack(spacing: 8) {
+                    AddMenuItems(store: store)     // trzy przyciski wprost, bez zagnieżdżonego menu (Menu w Form/Section bywa zawodne)
                     Spacer()
                     if store.isIndexing { ProgressView().controlSize(.small) }
                     Button(L("Odśwież teraz", "Refresh now")) { store.reindexAll() }
@@ -264,14 +264,14 @@ struct ShortcutsTab: View {
     @ObservedObject var store: LibraryStore
     var body: some View {
         Form {
-            Section(L("Klawisze 1–4: szybki filtr typu", "Keys 1–4: quick type filter")) {
+            Section(L("⌘1–⌘4: szybki filtr typu", "⌘1–⌘4: quick type filter")) {
                 ForEach(0..<4, id: \.self) { i in
-                    Picker(L("Klawisz \(i + 1)", "Key \(i + 1)"), selection: Binding(get: { store.settings.quickKeys[i] }, set: { store.data.settings.quickKeys[i] = $0 })) {
+                    Picker(L("⌘\(i + 1)", "⌘\(i + 1)"), selection: Binding(get: { store.settings.quickKeys[i] }, set: { store.data.settings.quickKeys[i] = $0 })) {
                         ForEach(MediaClass.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
                 }
-                Text(L("W bieżącej kategorii (folder, kolekcja…) pokazuje tylko wybrany typ. Ponowne naciśnięcie zdejmuje filtr. Shift + klawisz zmienia typ zaznaczonego dźwięku (SFX albo muzyka).",
-                       "Shows only the chosen type within the current category (folder, collection…). Press again to clear the filter. Shift + key changes the selected sound's type (SFX or music)."))
+                Text(L("W bieżącej kategorii (folder, kolekcja…) pokazuje tylko wybrany typ. Ponowne naciśnięcie zdejmuje filtr. ⌘⇧ + klawisz zmienia typ zaznaczonego dźwięku (SFX albo muzyka). Zawsze z ⌘, żeby nie kolidowało z pisaniem w wyszukiwarce.",
+                       "Shows only the chosen type within the current category (folder, collection…). Press again to clear the filter. ⌘⇧ + key changes the selected sound's type (SFX or music). Always with ⌘, so it never collides with typing in search."))
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section(L("Skrót globalny: pokaż / ukryj panel", "Global shortcut: show / hide panel")) {
@@ -282,7 +282,7 @@ struct ShortcutsTab: View {
             }
             Section(L("Pokaż w Finderze", "Reveal in Finder")) {
                 Picker(L("Klawisz w panelu", "Key in the panel"), selection: $store.data.settings.finderKey) {
-                    ForEach([9, 8, 7, 0], id: \.self) { Text("\($0)").tag($0) }
+                    ForEach([9, 8, 7, 0], id: \.self) { Text("⌘\($0)").tag($0) }
                     Text(L("wyłączony", "off")).tag(-1)
                 }
                 Text(L("Po naciśnięciu pokazuje w Finderze zaznaczone pliki (tak samo jak „Pokaż w Finderze” z menu prawego przycisku).",
@@ -290,8 +290,8 @@ struct ShortcutsTab: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section(L("Pozostałe", "Other")) {
-                LabeledContent("5") { Text(L("dodaj zaznaczone do ulubionych (lub usuń)", "add selected to favorites (or remove)")) }
-                LabeledContent("6") { Text(L("wyczyść filtry i wyszukiwanie", "clear filters and search")) }
+                LabeledContent("⌘5") { Text(L("dodaj zaznaczone do ulubionych (lub usuń)", "add selected to favorites (or remove)")) }
+                LabeledContent("⌘6") { Text(L("wyczyść filtry i wyszukiwanie", "clear filters and search")) }
                 LabeledContent(L("Strzałki", "Arrows")) { Text(L("przejście po elementach", "move between items")) }
                 LabeledContent("Enter") { Text(L("zmiana nazwy", "rename")) }
                 LabeledContent(L("Spacja", "Space")) { Text(L("odsłuch (dźwięk) lub większy podgląd (obraz, wideo)", "playback (sound) or bigger preview (image, video)")) }

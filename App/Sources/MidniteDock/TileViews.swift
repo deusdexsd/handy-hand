@@ -176,6 +176,7 @@ struct RowView: View {
         .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(selected ? accent : .clear, lineWidth: 1.2))
         .scaleEffect(pressed ? 0.985 : 1)
         .overlay(DragOverlay(paths: { store.dragPaths(for: item) }, previewName: { item.name }, isVideo: item.kind == .video,
+                             passThrough: CGRect(x: 0, y: 0, width: Self.rowPadding + 16 + Self.spacing, height: 30),   // gwiazdka: klik ma trafić do SwiftUI, nie do warstwy przeciągania
                              onDown: { store.pressDown(item) }, onPress: { pressed = $0 },
                              onClick: { c, s in store.click(item, command: c, shift: s) },
                              onDrag: { store.dragging = $0 }, onHover: { _ in },

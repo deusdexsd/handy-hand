@@ -27,9 +27,16 @@ final class DockPanel: NSPanel {
            event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty, canLeaveTextField?() ?? true {
             makeFirstResponder(nil); return
         }
-        if event.type == .keyDown, !(firstResponder is NSTextView),
-           event.modifierFlags.intersection([.command, .control, .option]).isEmpty,
-           let k = Self.key(event), onKey?(k) == true { return }
+        if event.type == .keyDown, let k = Self.key(event) {
+            switch k {
+            case .digit:
+                // Skróty cyfrowe działają TYLKO z ⌘ — same cyfry zawsze trafiają tam, gdzie akurat pisze się tekst.
+                if event.modifierFlags.contains(.command), onKey?(k) == true { return }
+            default:
+                if !(firstResponder is NSTextView), event.modifierFlags.intersection([.command, .control, .option]).isEmpty,
+                   onKey?(k) == true { return }
+            }
+        }
         super.sendEvent(event)
     }
 
@@ -222,7 +229,7 @@ final class PanelController: NSObject {
             expanded = want
             hideWork?.cancel()
             if want {
-                body.orderFrontRegardless()
+                body.makeKeyAndOrderFront(nil)     // .nonactivatingPanel: staje się klawiszowy BEZ aktywowania innej apki (np. FCP)
                 state.expanded = true
             } else {
                 state.expanded = false
@@ -672,19 +679,26 @@ enum SelfTest {
             print("SELF 31b po odjechaniu: cel Y=\(Int(controller.state.tipY)) aktywna=\(controller.state.armActive)")
             controller.debugMouse = nil
         }
-        // Esc w wyszukiwarce: wychodzi z pola, a potem klawisz cyfry działa jak skrót
+        // Wyszukiwarka: prawdziwe pisanie (bez ⌘) trafia do pola, ⌘+cyfra to skrót, Esc wychodzi z pola.
         do {
             let panel = controller.bodyPanel
             func find(_ v: NSView) -> NSTextField? { if let t = v as? NSTextField, t.isEditable { return t }; for c in v.subviews { if let r = find(c) { return r } }; return nil }
             if let cv = panel.contentView, let field = find(cv) {
                 panel.makeKeyAndOrderFront(nil); panel.makeFirstResponder(field); await wait(0.3)
                 let editing = panel.firstResponder is NSTextView
-                func key(_ code: UInt16, _ ch: String) -> NSEvent { NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: panel.windowNumber, context: nil, characters: ch, charactersIgnoringModifiers: ch, isARepeat: false, keyCode: code)! }
+                func key(_ code: UInt16, _ ch: String, cmd: Bool = false) -> NSEvent {
+                    NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: cmd ? [.command] : [], timestamp: 0, windowNumber: panel.windowNumber,
+                                     context: nil, characters: ch, charactersIgnoringModifiers: ch, isARepeat: false, keyCode: code)!
+                }
+                let beforeSearch = store.search
+                panel.sendEvent(key(19, "2")); await wait(0.1)      // sama cyfra w polu tekstowym: ma się wpisać, NIE być skrótem
+                print("SELF 32 cyfra bez ⌘ w polu: pisało=\(editing) wpisano=\(store.search != beforeSearch) filtr=\(String(describing: store.config.filters.klass))")
+                store.search = ""
                 panel.sendEvent(key(53, "\u{1b}")); await wait(0.2)
-                print("SELF 32 Esc w wyszukiwarce: pisało=\(editing) po Esc pisze=\(panel.firstResponder is NSTextView)")
+                print("SELF 32b Esc w wyszukiwarce: po Esc pisze=\(panel.firstResponder is NSTextView)")
                 store.config.filters = .none
-                panel.sendEvent(key(19, "2")); await wait(0.2)       // klawisz 2 = filtr typu (muzyka)
-                print("SELF 32b po Esc klawisz 2 działa: filtr=\(String(describing: store.config.filters.klass))"); store.config.filters = .none
+                panel.sendEvent(key(19, "2", cmd: true)); await wait(0.2)     // ⌘2 poza polem = skrót (filtr typu)
+                print("SELF 32c po Esc ⌘2 działa jako skrót: filtr=\(String(describing: store.config.filters.klass))"); store.config.filters = .none
             } else { print("SELF 32 brak pola wyszukiwania w panelu") }
         }
         // Zapis na dysk
