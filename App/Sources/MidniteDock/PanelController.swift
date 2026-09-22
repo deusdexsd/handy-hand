@@ -94,12 +94,27 @@ struct HandleView: View {
             } else if showsCap {
                 let shape = UnevenRoundedRectangle(topLeadingRadius: side == 1 ? 12 : 0, bottomLeadingRadius: side == 1 || side == 0 ? 12 : 0,
                                                    bottomTrailingRadius: side == -1 || side == 0 ? 12 : 0, topTrailingRadius: side == -1 ? 12 : 0, style: .continuous)
-                ZStack {
-                    shape.fill(Color.black)
-                    RadialGradient(colors: [glowColor.opacity(min(1, 0.55 * glow * k)), .clear], center: side == -1 ? .leading : (side == 1 ? .trailing : .bottom), startRadius: 0, endRadius: 110).clipShape(shape)
-                    shape.strokeBorder(glowColor.opacity(min(1, 0.8 * glow * k)), lineWidth: 1)
+                // Poświata NA ZEWNĄTRZ pigułki (tak jak przy prawdziwym notchu), nie w środku — wcześniej była przycięta
+                // do kształtu (.clipShape), więc świeciła jak lampka wewnątrz czarnej wysepki zamiast wylewać się spod niej.
+                ZStack(alignment: .top) {
+                    if side == 0 {
+                        RadialGradient(colors: [glowColor.opacity(min(1, 0.5 * glow * k)), .clear], center: .top, startRadius: 0, endRadius: 150)
+                            .frame(width: anchorSize.width + 140, height: 190)
+                            .offset(y: anchorSize.height - 4)
+                        RadialGradient(colors: [glowColor.opacity(min(1, 1.0 * glow * k)), .clear], center: .top, startRadius: 0, endRadius: 70)
+                            .frame(width: anchorSize.width + 50, height: 110)
+                            .offset(y: anchorSize.height - 4)
+                    }
+                    ZStack {
+                        shape.fill(Color.black)
+                        if side != 0 {      // boczne krawędzie: bez zmian, poświata zostaje wewnątrz pigułki
+                            RadialGradient(colors: [glowColor.opacity(min(1, 0.55 * glow * k)), .clear], center: side == -1 ? .leading : .trailing, startRadius: 0, endRadius: 110).clipShape(shape)
+                        }
+                        shape.strokeBorder(glowColor.opacity(min(1, 0.8 * glow * k)), lineWidth: 1)
+                    }
+                    .frame(width: anchorSize.width, height: anchorSize.height)
                 }
-                .frame(width: anchorSize.width, height: anchorSize.height)
+                .allowsHitTesting(false)
                 .animation(.easeOut(duration: 0.16), value: glow)
             } else {
                 Capsule().fill(Color.white.opacity(expanded ? 0 : 0.55)).frame(height: 4).padding(.horizontal, 20)
@@ -182,7 +197,7 @@ final class PanelController: NSObject {
         if l.showsCap { anchor = CGRect(x: hx, y: m.frame.maxY - hh, width: hw, height: hh); bodyFrame.origin.y = anchor.minY - 6 - bodySize.height }
         else { let top = l.windowTopY ?? m.frame.maxY; anchor = CGRect(x: hx, y: top - hh, width: hw, height: hh); bodyFrame.origin.y = top - bodySize.height }
         // Przezroczyste okno wokół wysepki na poświatę i łapkę (klikanie przechodzi przez nie).
-        let win = l.showsCap ? NotchGeometry.windowAround(anchor, side: 90, below: 150, screen: m.frame) : anchor
+        let win = l.showsCap ? NotchGeometry.windowAround(anchor, side: 90, below: 220, screen: m.frame) : anchor   // 220: miejsce na poświatę wylewającą się spod wysepki
         return (win, bodyFrame, l.showsCap, false, anchor, false)
     }
 
@@ -479,8 +494,9 @@ enum SnapshotRunner {
         }
         // Uchwyt (wirtualny notch) i ustawienia
         do {
-            let hv = NSHostingView(rootView: HandleView(showsCap: true, atBottom: false, expanded: false, isPlaying: false, state: { let st = PanelState(); st.glow = 0.9; return st }(), glowColor: PanelController.glowColor(.violet)).frame(width: 200, height: 32))
-            hv.frame = NSRect(x: 0, y: 0, width: 200, height: 32)
+            let hv = NSHostingView(rootView: HandleView(showsCap: true, atBottom: false, expanded: false, isPlaying: false, state: { let st = PanelState(); st.glow = 0.9; return st }(), glowColor: PanelController.glowColor(.violet), anchorSize: CGSize(width: 200, height: 32))
+                .frame(width: 420, height: 220).background(Color(white: 0.55)))
+            hv.frame = NSRect(x: 0, y: 0, width: 420, height: 220)
             let rep = hv.bitmapImageRepForCachingDisplay(in: hv.bounds)!; hv.cacheDisplay(in: hv.bounds, to: rep)
             let img = NSImage(size: hv.bounds.size); img.addRepresentation(rep); save(img, "\(dir)/09-handle.png")
         }
