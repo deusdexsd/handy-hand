@@ -1,0 +1,203 @@
+<title>Poradnik natywnego UI</title>
+<meta name="description" content="Jak utrzymać wygląd i zachowanie zgodne z macOS — zasady, na których zbudowany jest Handy, z konkretnymi wartościami do kopiowania.">
+<style>
+  :root{
+    --bg:#f4f4f2; --surface:#ffffff; --surface-2:#ececeb; --line:#dcdcda;
+    --fg:#1b1b1d; --fg-2:#57575c; --fg-3:#8a8a8f;
+    --accent:#7a4dff; --accent-soft:#efe9ff;
+    --code-bg:#eeeeec; --good:#1f8a4c; --warn:#a15c00; --bad:#c53434;
+    --radius-s:6px; --radius-m:10px; --radius-l:14px;
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#161618; --surface:#1e1e21; --surface-2:#232326; --line:#302f34;
+      --fg:#ededf0; --fg-2:#a3a3aa; --fg-3:#77777e;
+      --accent:#a98bff; --accent-soft:#2b2340;
+      --code-bg:#232327; --good:#55c98a; --warn:#e0a63e; --bad:#f2716b;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#161618; --surface:#1e1e21; --surface-2:#232326; --line:#302f34;
+    --fg:#ededf0; --fg-2:#a3a3aa; --fg-3:#77777e;
+    --accent:#a98bff; --accent-soft:#2b2340;
+    --code-bg:#232327; --good:#55c98a; --warn:#e0a63e; --bad:#f2716b;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    padding-inline:20px;
+  }
+  main{max-width:760px; margin:0 auto; padding-block:56px 96px}
+  h1{font-size:34px; line-height:1.15; letter-spacing:-.02em; margin:0 0 6px; text-wrap:balance}
+  .lead{color:var(--fg-2); font-size:17px; margin:0 0 40px; max-width:56ch}
+  h2{font-size:20px; letter-spacing:-.01em; margin:48px 0 4px; display:flex; align-items:baseline; gap:9px}
+  h2 .n{color:var(--accent); font-variant-numeric:tabular-nums; font-size:14px; font-weight:600}
+  h2 + .sub{color:var(--fg-2); font-size:13.5px; margin:0 0 16px; max-width:60ch}
+  h3{font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--fg-3); margin:22px 0 8px}
+  p{margin:8px 0; max-width:64ch}
+  ul,ol{padding-left:20px; margin:8px 0}
+  li{margin:5px 0; max-width:60ch}
+  code{font:12.5px/1.4 ui-monospace, "SF Mono", Menlo, monospace; background:var(--code-bg); border-radius:5px; padding:1.5px 6px}
+  pre{background:var(--code-bg); border-radius:var(--radius-m); padding:12px 14px; overflow-x:auto; margin:10px 0}
+  pre code{background:none; padding:0}
+  a{color:var(--accent)}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-l); padding:16px 18px; margin:14px 0; box-shadow:var(--shadow)}
+  .do-dont{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0}
+  @media (max-width:600px){.do-dont{grid-template-columns:1fr}}
+  .do,.dont{border-radius:var(--radius-m); padding:12px 14px; font-size:13.5px}
+  .do{background:color-mix(in srgb, var(--good) 12%, var(--surface)); border:1px solid color-mix(in srgb, var(--good) 30%, var(--line))}
+  .dont{background:color-mix(in srgb, var(--bad) 10%, var(--surface)); border:1px solid color-mix(in srgb, var(--bad) 26%, var(--line))}
+  .do b, .dont b{display:block; font-size:11px; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px}
+  .do b{color:var(--good)} .dont b{color:var(--bad)}
+  table{border-collapse:collapse; width:100%; margin:10px 0; font-size:13.5px}
+  th,td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top}
+  th{color:var(--fg-3); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em}
+  td code{white-space:nowrap}
+
+  /* --- demo swatches --- */
+  .swatch-row{display:flex; gap:10px; flex-wrap:wrap; margin:12px 0}
+  .swatch{flex:1; min-width:120px; border-radius:var(--radius-m); padding:14px; font-size:12px; color:#fff; display:flex; flex-direction:column; justify-content:flex-end; height:70px}
+  .type-row{display:flex; align-items:baseline; gap:14px; padding:7px 0; border-bottom:1px solid var(--line)}
+  .type-row:last-child{border-bottom:none}
+  .type-row .px{width:54px; color:var(--fg-3); font-variant-numeric:tabular-nums; font-size:11.5px; flex-shrink:0}
+  .type-row .sample{flex:1}
+  .glass-demo{
+    position:relative; border-radius:var(--radius-l); overflow:hidden; height:120px;
+    background:
+      radial-gradient(circle at 20% 20%, #ff6b6b, transparent 55%),
+      radial-gradient(circle at 80% 30%, #4d7cff, transparent 55%),
+      radial-gradient(circle at 50% 85%, #37c98a, transparent 55%), #222;
+  }
+  .glass-demo .pane{
+    position:absolute; inset:16px 16px auto auto; width:58%; height:70%;
+    background:rgba(255,255,255,.14); backdrop-filter: blur(18px) saturate(1.4);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    border:1px solid rgba(255,255,255,.28); border-radius:var(--radius-m);
+    display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px;
+  }
+  .spring-demo{display:flex; align-items:center; gap:18px; margin:12px 0}
+  .track{position:relative; height:6px; flex:1; background:var(--surface-2); border-radius:3px; overflow:visible}
+  .dot{position:absolute; top:50%; width:16px; height:16px; border-radius:50%; background:var(--accent); transform:translate(-50%,-50%)}
+  .dot.linear{animation:go-linear 1.8s linear infinite}
+  .dot.spring{animation:go-spring 1.8s cubic-bezier(.5,1.8,.3,1) infinite}
+  @keyframes go-linear{0%,100%{left:0} 50%{left:100%}}
+  @keyframes go-spring{0%,100%{left:0} 50%{left:100%}}
+  .caption{font-size:11.5px; color:var(--fg-3); text-align:center; width:70px}
+  footer{margin-top:56px; padding-top:18px; border-top:1px solid var(--line); color:var(--fg-3); font-size:12.5px}
+</style>
+
+<main>
+  <h1>Poradnik natywnego UI (macOS)</h1>
+  <p class="lead">Zasady, na których zbudowany jest interfejs Handy — żeby każda kolejna zmiana dalej wyglądała jak część systemu, a nie jak doklejona strona internetowa. Przy każdej zasadzie są konkretne wartości z kodu Handy, które możesz kopiować.</p>
+
+  <h2><span class="n">01</span> Materiał, nie płaska plansza</h2>
+  <p class="sub">Panele w macOS przepuszczają i rozmywają to, co jest pod spodem (Liquid Glass / vibrancy) — to jeden z najsilniejszych sygnałów „natywności”.</p>
+  <div class="glass-demo"><div class="pane">NSVisualEffectView</div></div>
+  <div class="do-dont">
+    <div class="do"><b>Rób tak</b>Panel i duży podgląd w Handy używają <code>NSVisualEffectView(material: .hudWindow)</code> przez <code>VisualEffect</code> — tło zawsze pasuje do tapety i trybu jasny/ciemny.</div>
+    <div class="dont"><b>Nie tak</b>Płaski, jednolity kolor tła (np. <code>Color(white: 0.15)</code>) na całym panelu — wygląda jak strona WWW, nie jak panel systemowy.</div>
+  </div>
+
+  <h2><span class="n">02</span> Jeden akcent, reszta neutralna</h2>
+  <p class="sub">System macOS ma jeden kolor akcentu na cały interfejs. Wielobarwne UI od razu wygląda niepoważnie (Twoja uwaga z początku projektu).</p>
+  <div class="swatch-row">
+    <div class="swatch" style="background:#8a8a8f">Neutralny tekst / ikony</div>
+    <div class="swatch" style="background:#7a4dff">Akcent — tylko zaznaczenie, odtwarzanie, aktywne filtry</div>
+    <div class="swatch" style="background:#3a3a3d">Tło / karty</div>
+  </div>
+  <p>W Handy akcent (<code>AccentChoice</code>) steruje jedną rzeczą naraz: obwódką zaznaczenia, kropką odtwarzania, aktywnym filtrem. Reszta — ikony, tekst, tła kafli — zostaje w skali szarości z <code>Color.primary.opacity(...)</code>, więc automatycznie działa w jasnym i ciemnym trybie.</p>
+
+  <h2><span class="n">03</span> Skala typografii, nie przypadkowe rozmiary</h2>
+  <p class="sub">System używa San Francisco (<code>-apple-system</code> / SF Pro) z kilkoma stałymi wagami. W Handy skala jest wąska i konsekwentna:</p>
+  <div class="card">
+    <div class="type-row"><span class="px">13 · 600</span><span class="sample" style="font-weight:600">Tytuł kategorii, nagłówki sekcji</span></div>
+    <div class="type-row"><span class="px">12 · 500</span><span class="sample" style="font-weight:500">Nazwa pliku, etykieta przycisku</span></div>
+    <div class="type-row"><span class="px">11 · 400</span><span class="sample">Metadane — długość, rozszerzenie, data</span></div>
+    <div class="type-row"><span class="px">10.5</span><span class="sample" style="color:var(--fg-3)">Liczniki, znaczki, drobne podpisy</span></div>
+  </div>
+  <p>Zasada: rozmiar i waga niosą hierarchię, nie kolor. Drugorzędny tekst dostaje <code>.foregroundStyle(.secondary)</code>, nie ciemniejszy odcień szarości wpisany na sztywno.</p>
+
+  <h2><span class="n">04</span> SF Symbols zamiast własnych ikon</h2>
+  <p class="sub">Jedna rodzina ikon, jedna grubość linii, ikony reagują na <code>.font(.system(size:))</code> tak jak tekst.</p>
+  <div class="do-dont">
+    <div class="do"><b>Rób tak</b><code>Image(systemName: "waveform")</code>, <code>"tag"</code>, <code>"star.fill"</code> — spójne z resztą macOS, skalują się i kolorują jak tekst.</div>
+    <div class="dont"><b>Nie tak</b>Wklejony PNG/SVG z internetu o innej grubości kreski — od razu widać, że to obcy element.</div>
+  </div>
+
+  <h2><span class="n">05</span> Rytm odstępów</h2>
+  <p class="sub">Bez sztywnej siatki 8pt, ale z powtarzalnym, małym zestawem wartości — dzięki temu wszystko „się zgadza” bez mierzenia.</p>
+  <table>
+    <tr><th>Do czego</th><th>Wartości używane w Handy</th></tr>
+    <tr><td>Padding wnętrza (kafel, wiersz, toolbar)</td><td><code>6–10 pt</code></td></tr>
+    <tr><td>Odstęp między elementami w rzędzie</td><td><code>6–10 pt</code></td></tr>
+    <tr><td>Promień zaokrąglenia — mały (przyciski, chipy)</td><td><code>6–7 pt</code></td></tr>
+    <tr><td>Promień zaokrąglenia — karta/kafel</td><td><code>10 pt</code></td></tr>
+    <tr><td>Promień zaokrąglenia — panel/okno</td><td><code>14–16 pt</code></td></tr>
+  </table>
+
+  <h2><span class="n">06</span> Kontrolki systemowe, nie wynajdywanie koła</h2>
+  <p class="sub"><code>Form</code>, <code>Picker</code>, <code>Toggle</code>, <code>Stepper</code>, <code>ColorPicker</code> w SwiftUI na macOS automatycznie dostają natywny wygląd, klawiaturę, dostępność i tryb ciemny.</p>
+  <div class="do-dont">
+    <div class="do"><b>Rób tak</b>Ustawienia Handy to siedem zakładek w <code>Form { Section { Picker/Toggle/Stepper } }.formStyle(.grouped)</code> — wygląda dokładnie jak systemowe okno preferencji.</div>
+    <div class="dont"><b>Nie tak</b>Własny, rysowany od zera przełącznik albo suwak — więcej kodu, gorsza dostępność, i tak wygląda gorzej niż systemowy.</div>
+  </div>
+
+  <h2><span class="n">07</span> Ruch sprężysty, nie linia prosta</h2>
+  <p class="sub">macOS prawie nigdy nie używa <code>ease-in-out</code> na stałym czasie. Interfejs „odbija się” fizycznie — tak zachowuje się prawdziwy obiekt.</p>
+  <div class="spring-demo">
+    <span class="caption">linear</span>
+    <div class="track"><div class="dot linear"></div></div>
+  </div>
+  <div class="spring-demo">
+    <span class="caption">spring</span>
+    <div class="track"><div class="dot spring"></div></div>
+  </div>
+  <p>W kodzie: <code>.animation(.spring(response: 0.25–0.34, dampingFraction: 1), value: ...)</code> zamiast <code>.easeInOut(duration:)</code>. I zawsze warunkowo, przez <code>@Environment(\.accessibilityReduceMotion)</code> — gdy użytkownik włączył „Zmniejsz ruch”, Handy przełącza się na krótki <code>.easeOut(duration: 0.08–0.15)</code> albo `nil`.</p>
+
+  <h2><span class="n">08</span> Stany hover / press / selected — subtelne</h2>
+  <p class="sub">Systemowe podświetlenia to zwykle zmiana krycia o kilka–kilkanaście procent, nie zmiana koloru.</p>
+  <table>
+    <tr><th>Stan</th><th>Efekt w Handy</th></tr>
+    <tr><td>Spoczynek</td><td><code>Color.primary.opacity(0.06)</code> tło kafla</td></tr>
+    <tr><td>Hover</td><td><code>0.09</code></td></tr>
+    <tr><td>Zaznaczone</td><td><code>0.13</code> tło + <code>1.5pt</code> obwódka w kolorze akcentu</td></tr>
+    <tr><td>Wciśnięte</td><td><code>scaleEffect(0.94–0.985)</code> ze sprężyną</td></tr>
+  </table>
+
+  <h2><span class="n">09</span> Dostępność jako część projektu, nie dodatek</h2>
+  <ul>
+    <li><code>.accessibilityLabel(...)</code> na każdej ikonie-przycisku bez widocznego tekstu (Handy: „Wyżej”, „Usuń źródło …”, „Dodaj do ulubionych”).</li>
+    <li><code>.help(...)</code> — tooltipy po najechaniu myszą kosztują jedną linijkę, a bardzo pomagają, gdy ikona nie jest oczywista (np. ikona tagu = szukanie po metadanych).</li>
+    <li>Reduce Motion i Reduce Transparency respektowane wprost w kodzie, nie zakładane, że „to tylko animacja”.</li>
+  </ul>
+
+  <h2><span class="n">10</span> Jasny i ciemny tryb — za darmo, jeśli używasz tokenów systemowych</h2>
+  <div class="do-dont">
+    <div class="do"><b>Rób tak</b><code>Color.primary</code>, <code>.secondary</code>, <code>.tertiary</code>, materiały <code>NSVisualEffectView</code> — automatycznie poprawne w obu trybach.</div>
+    <div class="dont"><b>Nie tak</b>Kolor na sztywno, np. <code>Color(white: 0.95)</code> jako tło — w ciemnym trybie wygląda jak błąd.</div>
+  </div>
+  <p>Jedyne miejsce, gdzie Handy definiuje kolor „na sztywno”, to akcent i poświata notcha — i tam świadomie, bo to element brandu, nie tekst systemowy.</p>
+
+  <h2><span class="n">Checklist</span> Zanim dodasz nowy element</h2>
+  <div class="card">
+    <ol>
+      <li>Czy tło to materiał systemowy, a nie płaski kolor?</li>
+      <li>Czy używam SF Symbols, a nie własnej ikony?</li>
+      <li>Czy rozmiar i waga tekstu pasują do istniejącej skali (13/12/11/10.5)?</li>
+      <li>Czy odstępy i promienie są z tego samego, małego zestawu wartości?</li>
+      <li>Czy to <code>Picker</code>/<code>Toggle</code>/<code>Form</code>, zanim zacznę pisać coś własnego?</li>
+      <li>Czy animacja to <code>.spring(...)</code>, z wyłącznikiem dla Reduce Motion?</li>
+      <li>Czy każdy przycisk-ikona ma <code>.accessibilityLabel</code> i <code>.help</code>?</li>
+      <li>Czy sprawdziłem oba tryby — jasny i ciemny?</li>
+    </ol>
+  </div>
+
+  <h3>Dalej poczytać</h3>
+  <p><a href="https://developer.apple.com/design/human-interface-guidelines" target="_blank" rel="noopener">Apple Human Interface Guidelines</a> — oficjalne zasady, aktualizowane co roku. To, co powyżej, to praktyczna esencja z nich, dopasowana do kodu Handy.</p>
+
+  <footer>Poradnik napisany na podstawie kodu Handy (wrzesień 2026) — jeśli zasady w aplikacji się zmienią, ten dokument warto zaktualizować razem z nimi.</footer>
+</main>
