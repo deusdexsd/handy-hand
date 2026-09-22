@@ -36,7 +36,7 @@ struct PromptRequest: Identifiable {
 
 @MainActor
 final class LibraryStore: ObservableObject {
-    @Published var data: UserData { didSet { dataVersion += 1; scheduleSave() } }
+    @Published var data: UserData { didSet { dataVersion += 1; scheduleSave(); Lang.current = data.settings.language } }
     @Published private(set) var items: [MediaItem] = [] { didSet { itemsVersion += 1 } }
     @Published var search = ""
     @Published var selection: Set<String> = []
@@ -72,6 +72,7 @@ final class LibraryStore: ObservableObject {
         userStore = UserDataStore(url: dir.appendingPathComponent("userdata.json"))
         indexURL = dir.appendingPathComponent("index.json")
         data = userStore.load()
+        Lang.current = data.settings.language
         if let d = try? Data(contentsOf: indexURL), let cached = try? JSONDecoder().decode([MediaItem].self, from: d) { items = cached }
         restartWatcher()
         reindexAll()
@@ -111,7 +112,7 @@ final class LibraryStore: ObservableObject {
         let key = [dataVersion, itemsVersion, search.hashValue]
         if let m = visibleMemo, m.key == key { return m.value }
         let v = LibraryQuery.apply(items, config: config, search: search, org: org, dups: dups,
-                                   hideDuplicates: settings.hideDuplicates, sourceOrder: sourceOrder)
+                                   hideDuplicates: settings.hideDuplicates, sourceOrder: sourceOrder, favoritesFirst: settings.favoritesFirst)
         visibleMemo = (key, v)
         return v
     }
@@ -141,7 +142,7 @@ final class LibraryStore: ObservableObject {
             for e in es { if e.category == config.category { return e.title }; if let c = find(e.children) { return c } }
             return nil
         }
-        return find(sidebar.flatMap(\.entries)) ?? "Wszystko"
+        return find(sidebar.flatMap(\.entries)) ?? L("Wszystko", "All")
     }
 
     // MARK: sidebar
@@ -162,29 +163,29 @@ final class LibraryStore: ObservableObject {
             SidebarEntry(id: id, category: c, title: t, icon: icon, tint: tint, count: count(c), children: children, collectionID: coll)
         }
         var out: [SidebarSection] = [SidebarSection(id: "top", title: nil, entries: [
-            e(.favorites, "fav", "Ulubione", "star", .favorite), e(.all, "all", "Wszystko", "square.stack", .none)])]
+            e(.favorites, "fav", L("Ulubione", "Favorites"), "star", .favorite), e(.all, "all", L("Wszystko", "All"), "square.stack", .none)])]
         let classIcons: [MediaClass: String] = [.sfx: "waveform", .music: "music.note", .video: "film", .image: "photo"]
-        out.append(SidebarSection(id: "kind", title: "Typ", entries: MediaClass.allCases.map { e(.klass($0), "t\($0.rawValue)", $0.label, classIcons[$0]!, .smart) }))
+        out.append(SidebarSection(id: "kind", title: L("Typ", "Type"), entries: MediaClass.allCases.map { e(.klass($0), "t\($0.rawValue)", $0.label, classIcons[$0]!, .smart) }))
         func sourceEntry(_ s: Source) -> SidebarEntry {
             let groups = Set(items.filter { $0.sourceID == s.id }.compactMap(\.group)).sorted()
             let icon = s.kind == .fcpLibrary ? "film.stack" : (s.kind == .files ? "doc.on.doc" : "folder")
             return e(.source(s.id), "s\(s.id)", s.name, icon, s.kind == .fcpLibrary ? .fcp : .folder,
                      children: groups.map { e(.group(s.id, $0), "g\(s.id)\($0)", $0, "folder", s.kind == .fcpLibrary ? .fcp : .folder) })
         }
-        out.append(SidebarSection(id: "folders", title: "Foldery i pliki", entries: sources.filter { $0.kind != .fcpLibrary }.map(sourceEntry), canAdd: true))
+        out.append(SidebarSection(id: "folders", title: L("Foldery i pliki", "Folders and files"), entries: sources.filter { $0.kind != .fcpLibrary }.map(sourceEntry), canAdd: true))
         let libs = sources.filter { $0.kind == .fcpLibrary }.map(sourceEntry)
-        if !libs.isEmpty { out.append(SidebarSection(id: "fcp", title: "Biblioteki FCP", entries: libs)) }
-        out.append(SidebarSection(id: "coll", title: "Kolekcje", entries: org.collections.map {
+        if !libs.isEmpty { out.append(SidebarSection(id: "fcp", title: L("Biblioteki FCP", "FCP libraries"), entries: libs)) }
+        out.append(SidebarSection(id: "coll", title: L("Kolekcje", "Collections"), entries: org.collections.map {
             e(.collection($0.id), "c\($0.id)", $0.name, "rectangle.stack", .collection, coll: $0.id) }, canAdd: true))
         for cls in MediaClass.allCases where cls.hasDuration {
             let rs = org.durationRanges.filter { $0.mediaClass == cls }.sorted { $0.minSeconds < $1.minSeconds }
             if rs.isEmpty { continue }
-            out.append(SidebarSection(id: "dur-\(cls.rawValue)", title: "Długość · \(cls.label)", entries: rs.map {
+            out.append(SidebarSection(id: "dur-\(cls.rawValue)", title: L("Długość · \(cls.label)", "Length · \(cls.label)"), entries: rs.map {
                 var x = e(.duration($0.id), "d\($0.id)", $0.name, classIcons[cls]!, .smart)
                 x.chipTitle = "\(cls.label) · \($0.name)"; return x }))
         }
         if !org.keywordRules.isEmpty {
-            out.append(SidebarSection(id: "kw", title: "Słowa kluczowe", entries: org.keywordRules.map { e(.keyword($0.id), "k\($0.id)", $0.name, "tag", .smart) }))
+            out.append(SidebarSection(id: "kw", title: L("Słowa kluczowe", "Keywords"), entries: org.keywordRules.map { e(.keyword($0.id), "k\($0.id)", $0.name, "tag", .smart) }))
         }
         return out
     }
@@ -214,7 +215,7 @@ final class LibraryStore: ObservableObject {
         if let i = data.sources.firstIndex(where: { $0.kind == .files }) {
             data.sources[i].filePaths = Array(Set((data.sources[i].filePaths ?? []) + paths)).sorted()
         } else {
-            data.sources.append(Source(name: "Pojedyncze pliki", path: "", kind: .files, filePaths: paths.sorted()))
+            data.sources.append(Source(name: L("Pojedyncze pliki", "Individual files"), path: "", kind: .files, filePaths: paths.sorted()))
         }
         restartWatcher(); reindexAll()
     }
@@ -331,12 +332,13 @@ final class LibraryStore: ObservableObject {
     /// Wspólne wejście dla menu kontekstowego i klawisza Enter.
     func beginRename(_ item: MediaItem) {
         if sources.first(where: { $0.id == item.sourceID })?.kind == .fcpLibrary {
-            notice = "Plików z biblioteki FCP nie przemianowuję: Final Cut Pro zgubiłby do nich linki."; return
+            notice = L("Plików z biblioteki FCP nie przemianowuję: Final Cut Pro zgubiłby do nich linki.", "I don't rename files from an FCP library: Final Cut Pro would lose its links to them."); return
         }
         let copies = duplicateItems(of: item).count
-        var msg = "Zmienia nazwę pliku na dysku. Jeśli ten plik jest użyty w projekcie Final Cut Pro bez kopiowania do biblioteki, FCP zgubi do niego link."
-        if copies > 1 { msg += " Pozostałe kopie (\(copies - 1)) zostają bez zmian." }
-        ask("Zmień nazwę", message: msg, placeholder: "Nowa nazwa", initial: item.name, action: "Zmień") { [weak self] new in
+        var msg = L("Zmienia nazwę pliku na dysku. Jeśli ten plik jest użyty w projekcie Final Cut Pro bez kopiowania do biblioteki, FCP zgubi do niego link.",
+                     "Renames the file on disk. If it's used in a Final Cut Pro project without being copied into the library, FCP will lose its link to it.")
+        if copies > 1 { msg += L(" Pozostałe kopie (\(copies - 1)) zostają bez zmian.", " The other copies (\(copies - 1)) stay unchanged.") }
+        ask(L("Zmień nazwę", "Rename"), message: msg, placeholder: L("Nowa nazwa", "New name"), initial: item.name, action: L("Zmień", "Rename")) { [weak self] new in
             if let err = self?.rename(item, to: new) { self?.notice = err }
         }
     }
@@ -436,25 +438,25 @@ final class LibraryStore: ObservableObject {
     /// Zmienia nazwę pliku NA DYSKU i przenosi na nową ścieżkę ulubione, tagi, kolekcje i ręczne typy.
     /// Zwraca komunikat błędu albo nil.
     func rename(_ item: MediaItem, to input: String) -> String? {
-        guard let src = sources.first(where: { $0.id == item.sourceID }) else { return "Nie znaleziono źródła tego pliku." }
-        if src.kind == .fcpLibrary { return "Plików z biblioteki FCP nie przemianowuję: Final Cut Pro zgubiłby do nich linki." }
+        guard let src = sources.first(where: { $0.id == item.sourceID }) else { return L("Nie znaleziono źródła tego pliku.", "Couldn't find this file's source.") }
+        if src.kind == .fcpLibrary { return L("Plików z biblioteki FCP nie przemianowuję: Final Cut Pro zgubiłby do nich linki.", "I don't rename files from an FCP library: Final Cut Pro would lose its links to them.") }
         let old = URL(fileURLWithPath: item.path)
         let ext = old.pathExtension
         var base = input.trimmingCharacters(in: .whitespacesAndNewlines)
         if !ext.isEmpty, base.lowercased().hasSuffix("." + ext.lowercased()) { base = String(base.dropLast(ext.count + 1)) }
-        guard !base.isEmpty, !base.contains("/"), !base.contains(":"), !base.hasPrefix(".") else { return "Nazwa jest pusta albo zawiera niedozwolone znaki (/ i :)." }
+        guard !base.isEmpty, !base.contains("/"), !base.contains(":"), !base.hasPrefix(".") else { return L("Nazwa jest pusta albo zawiera niedozwolone znaki (/ i :).", "The name is empty or contains characters that aren\u{27}t allowed (/ and :).") }
         if base == item.name { return nil }
         var new = old.deletingLastPathComponent().appendingPathComponent(base)
         if !ext.isEmpty { new = new.appendingPathExtension(ext) }
         let fm = FileManager.default
         let caseOnly = new.path.lowercased() == old.path.lowercased()
-        if fm.fileExists(atPath: new.path), !caseOnly { return "W tym folderze jest już plik o nazwie „\(new.lastPathComponent)”." }
+        if fm.fileExists(atPath: new.path), !caseOnly { return L("W tym folderze jest już plik o nazwie „\(new.lastPathComponent)”.", "A file named “\(new.lastPathComponent)” already exists in this folder.") }
         do {
             if caseOnly {   // system plików nie rozróżnia wielkości liter: przez nazwę tymczasową
                 let tmp = old.deletingLastPathComponent().appendingPathComponent(".rename-\(UUID().uuidString)")
                 try fm.moveItem(at: old, to: tmp); try fm.moveItem(at: tmp, to: new)
             } else { try fm.moveItem(at: old, to: new) }
-        } catch { return "Nie udało się zmienić nazwy: \(error.localizedDescription)" }
+        } catch { return L("Nie udało się zmienić nazwy: \(error.localizedDescription)", "Couldn\u{27}t rename: \(error.localizedDescription)") }
         migratePath(old.path, new.path, newName: base)
         return nil
     }

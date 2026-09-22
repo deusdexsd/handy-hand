@@ -4,7 +4,7 @@ public enum ViewMode: String, Codable, Sendable, CaseIterable { case grid, list 
 public enum SortKey: String, Codable, Sendable, CaseIterable {
     case name, duration, dateAdded, dateModified
     public var label: String {
-        switch self { case .name: "Nazwa"; case .duration: "Długość"; case .dateAdded: "Data dodania"; case .dateModified: "Data zmiany" }
+        switch self { case .name: LL("Nazwa", "Name"); case .duration: LL("Długość", "Length"); case .dateAdded: LL("Data dodania", "Date added"); case .dateModified: LL("Data zmiany", "Date modified") }
     }
 }
 
@@ -128,7 +128,7 @@ public enum LibraryQuery {
 
     public static func apply(_ items: [MediaItem], config: ViewConfig, search: String, org: Organization,
                              now: Date = Date(), dups: DuplicateIndex = .empty, hideDuplicates: Bool = false,
-                             sourceOrder: [UUID] = []) -> [MediaItem] {
+                             sourceOrder: [UUID] = [], favoritesFirst: Bool = false) -> [MediaItem] {
         let q = search.trimmingCharacters(in: .whitespaces).lowercased()
         let f = config.filters
         var out = items.filter { matches($0, category: config.category, org: org, dups: dups) }
@@ -152,6 +152,10 @@ public enum LibraryQuery {
             case .dateModified: r = a.modified < b.modified
             }
             return config.ascending ? r : !r
+        }
+        if favoritesFirst, config.category != .favorites {
+            let isFav: (MediaItem) -> Bool = { any($0, dups) { org.favorites.contains($0) } }
+            out.sort { a, b in let fa = isFav(a), fb = isFav(b); return fa != fb ? fa : false }     // stabilny sort: kolejność w grupie zostaje
         }
         return out
     }

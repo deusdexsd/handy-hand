@@ -60,21 +60,21 @@ struct ToolbarView: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            iconButton(store.settings.categoryLayout == .sidebar ? "sidebar.left" : "rectangle.split.3x1", "Układ kategorii") {
+            iconButton(store.settings.categoryLayout == .sidebar ? "sidebar.left" : "rectangle.split.3x1", L("Układ kategorii", "Category layout")) {
                 store.settings.categoryLayout = store.settings.categoryLayout == .sidebar ? .chips : .sidebar
             }
             Text(store.categoryTitle).font(.system(size: 13, weight: .semibold)).lineLimit(1).frame(minWidth: 70, alignment: .leading)
-            SearchField(text: $store.search, placeholder: "Szukaj w: \(store.categoryTitle)")
+            SearchField(text: $store.search, placeholder: L("Szukaj w: \(store.categoryTitle)", "Search in: \(store.categoryTitle)"))
             FilterMenu(store: store)
             SortMenu(store: store)
             PresetMenu(store: store)
-            iconButton(store.config.viewMode == .grid ? "square.grid.2x2" : "list.bullet", "Przełącz siatkę i listę") {
+            iconButton(store.config.viewMode == .grid ? "square.grid.2x2" : "list.bullet", L("Przełącz siatkę i listę", "Toggle grid and list")) {
                 store.config.viewMode = store.config.viewMode == .grid ? .list : .grid
             }
-            iconButton(store.settings.mode == .pinned ? "pin.fill" : "pin", "Przypnij panel", active: store.settings.mode == .pinned) {
+            iconButton(store.settings.mode == .pinned ? "pin.fill" : "pin", L("Przypnij panel", "Pin panel"), active: store.settings.mode == .pinned) {
                 store.settings.mode = store.settings.mode == .pinned ? .hover : .pinned
             }
-            iconButton("gearshape", "Ustawienia") { store.openSettings?() }
+            iconButton("gearshape", L("Ustawienia", "Settings")) { store.openSettings?() }
         }
         .padding(.horizontal, 10).padding(.vertical, 8)
     }
@@ -108,7 +108,7 @@ struct SearchField: View {
             TextField(placeholder, text: $text).textFieldStyle(.plain).font(.system(size: 12))
             if !text.isEmpty {
                 Button { text = "" } label: { Image(systemName: "xmark.circle.fill").font(.system(size: 11)).foregroundStyle(.tertiary) }
-                    .buttonStyle(.plain).accessibilityLabel("Wyczyść wyszukiwanie")
+                    .buttonStyle(.plain).accessibilityLabel(L("Wyczyść wyszukiwanie", "Clear search"))
             }
         }
         .padding(.horizontal, 8).frame(height: 26)
@@ -121,30 +121,30 @@ struct FilterMenu: View {
     var body: some View {
         let f = store.config.filters
         Menu {
-            Picker("Typ", selection: Binding(get: { f.klass }, set: { store.config.filters.klass = $0 })) {
-                Text("Wszystkie typy").tag(MediaClass?.none)
+            Picker(L("Typ", "Type"), selection: Binding(get: { f.klass }, set: { store.config.filters.klass = $0 })) {
+                Text(L("Wszystkie typy", "All types")).tag(MediaClass?.none)
                 ForEach(MediaClass.allCases, id: \.self) { Text($0.label).tag(MediaClass?.some($0)) }
             }
-            Picker("Długość", selection: Binding(get: { f.durationRangeID }, set: { store.config.filters.durationRangeID = $0 })) {
-                Text("Dowolna długość").tag(UUID?.none)
+            Picker(L("Długość", "Length"), selection: Binding(get: { f.durationRangeID }, set: { store.config.filters.durationRangeID = $0 })) {
+                Text(L("Dowolna długość", "Any length")).tag(UUID?.none)
                 ForEach(store.org.durationRanges) { Text("\($0.mediaClass.label) · \($0.name)").tag(UUID?.some($0.id)) }
             }
-            Picker("Data", selection: Binding(get: { f.withinDays }, set: { store.config.filters.withinDays = $0 })) {
-                Text("Dowolna data").tag(Int?.none)
-                Text("Ostatnie 7 dni").tag(Int?.some(7)); Text("Ostatnie 30 dni").tag(Int?.some(30))
+            Picker(L("Data", "Date"), selection: Binding(get: { f.withinDays }, set: { store.config.filters.withinDays = $0 })) {
+                Text(L("Dowolna data", "Any date")).tag(Int?.none)
+                Text(L("Ostatnie 7 dni", "Last 7 days")).tag(Int?.some(7)); Text(L("Ostatnie 30 dni", "Last 30 days")).tag(Int?.some(30))
             }
             if !store.org.allTags.isEmpty {
-                Picker("Tag", selection: Binding(get: { f.tag }, set: { store.config.filters.tag = $0 })) {
-                    Text("Dowolny tag").tag(String?.none)
+                Picker(L("Tag", "Tag"), selection: Binding(get: { f.tag }, set: { store.config.filters.tag = $0 })) {
+                    Text(L("Dowolny tag", "Any tag")).tag(String?.none)
                     ForEach(store.org.allTags, id: \.self) { Text($0).tag(String?.some($0)) }
                 }
             }
-            if f.isActive { Divider(); Button("Wyczyść filtry") { store.config.filters = .none } }
+            if f.isActive { Divider(); Button(L("Wyczyść filtry", "Clear filters")) { store.config.filters = .none } }
         } label: {
             Image(systemName: f.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
                 .font(.system(size: 13)).foregroundStyle(f.isActive ? store.settings.accent.color : Color.secondary).frame(width: 26, height: 26)
         }
-        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel("Filtry")
+        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel(L("Filtry", "Filters"))
     }
 }
 
@@ -152,15 +152,15 @@ struct SortMenu: View {
     @ObservedObject var store: LibraryStore
     var body: some View {
         Menu {
-            Picker("Sortuj", selection: Binding(get: { store.config.sort }, set: { store.config.sort = $0 })) {
+            Picker(L("Sortuj", "Sort"), selection: Binding(get: { store.config.sort }, set: { store.config.sort = $0 })) {
                 ForEach(SortKey.allCases, id: \.self) { Text($0.label).tag($0) }
             }
             Divider()
-            Toggle("Rosnąco", isOn: Binding(get: { store.config.ascending }, set: { store.config.ascending = $0 }))
+            Toggle(L("Rosnąco", "Ascending"), isOn: Binding(get: { store.config.ascending }, set: { store.config.ascending = $0 }))
         } label: {
             Image(systemName: "arrow.up.arrow.down").font(.system(size: 12)).foregroundStyle(.secondary).frame(width: 26, height: 26)
         }
-        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel("Sortowanie")
+        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel(L("Sortowanie", "Sorting"))
     }
 }
 
@@ -170,14 +170,14 @@ struct PresetMenu: View {
         Menu {
             ForEach(store.org.presets) { p in Button(p.name) { store.apply(p) } }
             if !store.org.presets.isEmpty { Divider() }
-            Button("Zapisz bieżący układ…") { store.ask("Zapisz układ", message: "Kategoria, filtry, sortowanie i widok.", placeholder: "Nazwa układu", action: "Zapisz") { store.savePreset(name: $0) } }
+            Button(L("Zapisz bieżący układ…", "Save current layout…")) { store.ask(L("Zapisz układ", "Save layout"), message: L("Kategoria, filtry, sortowanie i widok.", "Category, filters, sorting and view."), placeholder: L("Nazwa układu", "Layout name"), action: L("Zapisz", "Save")) { store.savePreset(name: $0) } }
             if !store.org.presets.isEmpty {
-                Menu("Usuń układ") { ForEach(store.org.presets) { p in Button(p.name, role: .destructive) { store.deletePreset(p.id) } } }
+                Menu(L("Usuń układ", "Delete layout")) { ForEach(store.org.presets) { p in Button(p.name, role: .destructive) { store.deletePreset(p.id) } } }
             }
         } label: {
             Image(systemName: "bookmark").font(.system(size: 12)).foregroundStyle(.secondary).frame(width: 26, height: 26)
         }
-        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel("Zapisane układy")
+        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel(L("Zapisane układy", "Saved layouts"))
     }
 }
 
@@ -190,9 +190,9 @@ struct FilterBar: View {
                 if let k = f.kind { chip(k.label) { store.config.filters.kind = nil } }
                 if let c = f.klass { chip(c.label) { store.config.filters.klass = nil } }
                 if let r = f.durationRangeID.flatMap({ id in store.org.durationRanges.first { $0.id == id } }) { chip(r.name) { store.config.filters.durationRangeID = nil } }
-                if let d = f.withinDays { chip("Ostatnie \(d) dni") { store.config.filters.withinDays = nil } }
+                if let d = f.withinDays { chip(L("Ostatnie \(d) dni", "Last \(d) days")) { store.config.filters.withinDays = nil } }
                 if let t = f.tag { chip("#\(t)") { store.config.filters.tag = nil } }
-                Button("Wyczyść") { store.config.filters = .none }.buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(.secondary)
+                Button(L("Wyczyść", "Clear")) { store.config.filters = .none }.buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(.secondary)
                 Spacer()
             }
             .padding(.horizontal, 12).padding(.bottom, 6)
@@ -203,7 +203,7 @@ struct FilterBar: View {
             HStack(spacing: 3) { Text(t); Image(systemName: "xmark").font(.system(size: 8, weight: .bold)) }
                 .font(.system(size: 11)).padding(.horizontal, 8).padding(.vertical, 3)
                 .background(Capsule().fill(store.settings.accent.color.opacity(0.18)))
-        }.buttonStyle(.plain).accessibilityLabel("Usuń filtr \(t)")
+        }.buttonStyle(.plain).accessibilityLabel(L("Usuń filtr \(t)", "Remove filter \(t)"))
     }
 }
 
@@ -245,10 +245,10 @@ struct SidebarView: View {
                             if sec.canAdd {
                                 if sec.id == "folders" {
                                     Menu { AddMenuItems(store: store) } label: { Image(systemName: "plus").font(.system(size: 10, weight: .semibold)) }
-                                        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().foregroundStyle(.secondary).accessibilityLabel("Dodaj folder, pliki lub bibliotekę")
+                                        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().foregroundStyle(.secondary).accessibilityLabel(L("Dodaj folder, pliki lub bibliotekę", "Add a folder, files, or a library"))
                                 } else {
                                     Button { add(sec.id) } label: { Image(systemName: "plus").font(.system(size: 10, weight: .semibold)) }
-                                        .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("Dodaj: \(t)")
+                                        .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel(L("Dodaj: \(t)", "Add: \(t)"))
                                 }
                             }
                         }.padding(.horizontal, 10).padding(.top, 12).padding(.bottom, 3)
@@ -290,12 +290,12 @@ struct SidebarView: View {
         }
         .contextMenu {
             if let cid = e.collectionID {
-                Button("Zmień nazwę…") { store.ask("Zmień nazwę", placeholder: "Nazwa", initial: e.title, action: "Zapisz") { store.renameCollection(cid, to: $0) } }
-                Button("Usuń kolekcję", role: .destructive) { store.deleteCollection(cid) }
+                Button(L("Zmień nazwę…", "Rename…")) { store.ask(L("Zmień nazwę", "Rename"), placeholder: L("Nazwa", "Name"), initial: e.title, action: L("Zapisz", "Save")) { store.renameCollection(cid, to: $0) } }
+                Button(L("Usuń kolekcję", "Delete collection"), role: .destructive) { store.deleteCollection(cid) }
             }
             if case .source(let sid) = e.category {
-                Button("Odśwież") { store.reindexAll() }
-                Button("Usuń źródło", role: .destructive) { store.removeSource(sid) }
+                Button(L("Odśwież", "Refresh")) { store.reindexAll() }
+                Button(L("Usuń źródło", "Remove source"), role: .destructive) { store.removeSource(sid) }
             }
         }
         .accessibilityElement(children: .ignore)
@@ -305,7 +305,7 @@ struct SidebarView: View {
 
     func add(_ section: String) {
         switch section {
-        case "coll": store.ask("Nowa kolekcja", placeholder: "Nazwa kolekcji", action: "Utwórz") { store.newCollection(name: $0) }
+        case "coll": store.ask(L("Nowa kolekcja", "New collection"), placeholder: L("Nazwa kolekcji", "Collection name"), action: L("Utwórz", "Create")) { store.newCollection(name: $0) }
         default: break
         }
     }
@@ -314,22 +314,22 @@ struct SidebarView: View {
 enum Pickers {
     @MainActor static func pickFolder(title: String, _ done: @escaping (URL) -> Void) {
         let p = NSOpenPanel()
-        p.title = title; p.canChooseDirectories = true; p.canChooseFiles = false; p.allowsMultipleSelection = false; p.prompt = "Wybierz"
+        p.title = title; p.canChooseDirectories = true; p.canChooseFiles = false; p.allowsMultipleSelection = false; p.prompt = L("Wybierz", "Choose")
         NSApp.activate(ignoringOtherApps: true)
         if p.runModal() == .OK, let u = p.url { done(u) }
     }
 
     @MainActor static func pickFiles(_ done: @escaping ([URL]) -> Void) {
         let p = NSOpenPanel()
-        p.title = "Wybierz pliki (dźwięk, wideo, obrazy)"; p.canChooseFiles = true; p.canChooseDirectories = false; p.allowsMultipleSelection = true
-        p.allowedContentTypes = [.audio, .movie, .image]; p.prompt = "Dodaj"
+        p.title = L("Wybierz pliki (dźwięk, wideo, obrazy)", "Choose files (audio, video, images)"); p.canChooseFiles = true; p.canChooseDirectories = false; p.allowsMultipleSelection = true
+        p.allowedContentTypes = [.audio, .movie, .image]; p.prompt = L("Dodaj", "Add")
         NSApp.activate(ignoringOtherApps: true)
         if p.runModal() == .OK { done(p.urls) }
     }
 
     @MainActor static func pickLibrary(_ done: @escaping (URL) -> Void) {
         let p = NSOpenPanel()
-        p.title = "Wybierz bibliotekę Final Cut Pro (.fcpbundle)"
+        p.title = L("Wybierz bibliotekę Final Cut Pro (.fcpbundle)", "Choose a Final Cut Pro library (.fcpbundle)")
         p.canChooseFiles = true; p.canChooseDirectories = true; p.allowsMultipleSelection = false; p.treatsFilePackagesAsDirectories = false
         p.directoryURL = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask).first
         NSApp.activate(ignoringOtherApps: true)
@@ -341,9 +341,9 @@ enum Pickers {
 struct AddMenuItems: View {
     @ObservedObject var store: LibraryStore
     var body: some View {
-        Button("Dodaj folder…") { Pickers.pickFolder(title: "Wybierz folder z dźwiękami, materiałem lub obrazami") { store.addSource(url: $0, kind: .folder) } }
-        Button("Dodaj pliki…") { Pickers.pickFiles { store.addFiles($0) } }
-        Button("Dodaj bibliotekę FCP…") { Pickers.pickLibrary { store.addSource(url: $0, kind: $0.pathExtension.lowercased() == "fcpbundle" ? .fcpLibrary : .folder) } }
+        Button(L("Dodaj folder…", "Add folder…")) { Pickers.pickFolder(title: L("Wybierz folder z dźwiękami, materiałem lub obrazami", "Choose a folder with sounds, footage or images")) { store.addSource(url: $0, kind: .folder) } }
+        Button(L("Dodaj pliki…", "Add files…")) { Pickers.pickFiles { store.addFiles($0) } }
+        Button(L("Dodaj bibliotekę FCP…", "Add FCP library…")) { Pickers.pickLibrary { store.addSource(url: $0, kind: $0.pathExtension.lowercased() == "fcpbundle" ? .fcpLibrary : .folder) } }
     }
 }
 
@@ -364,7 +364,7 @@ struct PromptOverlay: View {
                     TextField(p.placeholder, text: $text).textFieldStyle(.roundedBorder).focused($focused).onSubmit { confirm(p) }
                     HStack {
                         Spacer()
-                        Button("Anuluj") { store.prompt = nil }.keyboardShortcut(.cancelAction)
+                        Button(L("Anuluj", "Cancel")) { store.prompt = nil }.keyboardShortcut(.cancelAction)
                         Button(p.action) { confirm(p) }.keyboardShortcut(.defaultAction)
                     }
                 }
@@ -372,7 +372,7 @@ struct PromptOverlay: View {
                 .onAppear { text = p.initial; focused = true; selectAllSoon() }
             } else if let n = store.notice {
                 card {
-                    Text("Uwaga").font(.system(size: 13, weight: .semibold))
+                    Text(L("Uwaga", "Note")).font(.system(size: 13, weight: .semibold))
                     Text(n).font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     HStack { Spacer(); Button("OK") { store.notice = nil }.keyboardShortcut(.defaultAction) }
                 }

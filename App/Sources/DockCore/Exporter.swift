@@ -2,11 +2,11 @@ import Foundation
 
 public enum ExportLayout: String, Codable, CaseIterable, Sendable {
     case byTypeAndLength, byCollection
-    public var label: String { self == .byTypeAndLength ? "Typ i długość (SFX, Muzyka, Wideo, Obrazy → przedział)" : "Kolekcje" }
+    public var label: String { self == .byTypeAndLength ? LL("Typ i długość (SFX, Muzyka, Wideo, Obrazy → przedział)", "Type and length (SFX, Music, Video, Images → range)") : LL("Kolekcje", "Collections") }
 }
 public enum ExportMode: String, Codable, CaseIterable, Sendable {
     case copy, link
-    public var label: String { self == .copy ? "Kopiuj pliki" : "Dowiązania (bez kopiowania)" }
+    public var label: String { self == .copy ? LL("Kopiuj pliki", "Copy files") : LL("Dowiązania (bez kopiowania)", "Links (no copying)") }
 }
 public struct ExportEntry: Equatable, Sendable { public var source: String; public var relative: String }
 

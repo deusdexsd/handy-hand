@@ -624,4 +624,27 @@ final class IndexerTests: XCTestCase {
         XCTAssertEqual(HexColor.format(r: c.r, g: c.g, b: c.b), "FF8800")
         XCTAssertNil(HexColor.parse("12345"))
     }
+
+    func testFavoritesFirstKeepsSortWithinGroup() throws {
+        var org = Organization()
+        let a = item("a", 1), b = item("b", 1), c = item("c", 1)
+        org.favorites = [b.path]
+        var cfg = ViewConfig(); cfg.sort = .name; cfg.ascending = true
+        let off = LibraryQuery.apply([a, b, c], config: cfg, search: "", org: org, favoritesFirst: false)
+        XCTAssertEqual(off.map(\.name), ["a", "b", "c"])
+        let on = LibraryQuery.apply([a, b, c], config: cfg, search: "", org: org, favoritesFirst: true)
+        XCTAssertEqual(on.map(\.name), ["b", "a", "c"])          // ulubiony na górze, reszta zostaje posortowana
+        var favCfg = cfg; favCfg.category = .favorites
+        let inFavView = LibraryQuery.apply([a, b, c], config: favCfg, search: "", org: org, favoritesFirst: true)
+        XCTAssertEqual(inFavView.map(\.name), ["b"])                     // w widoku Ulubione i tak wszystko jest ulubione: bez zmian
+    }
+
+    func testLanguageAndFavoritesFirstDefaultsAndDecode() throws {
+        XCTAssertEqual(AppSettings().language, .pl)
+        XCTAssertTrue(AppSettings().favoritesFirst)
+        let en = try JSONDecoder().decode(AppSettings.self, from: Data("{\"language\":\"en\"}".utf8))
+        XCTAssertEqual(en.language, .en)
+        let off = try JSONDecoder().decode(AppSettings.self, from: Data("{\"favoritesFirst\":false}".utf8))
+        XCTAssertFalse(off.favoritesFirst)
+    }
 }

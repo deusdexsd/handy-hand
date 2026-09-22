@@ -32,7 +32,7 @@ struct LargePreviewView: View {
                         Button { previewer.toggle() } label: {
                             Image(systemName: previewer.isPlaying ? "pause.fill" : "play.fill").font(.system(size: 11))
                                 .frame(width: 26, height: 26).background(Circle().fill(accent)).foregroundStyle(.white)
-                        }.buttonStyle(PressableIconStyle()).accessibilityLabel(previewer.isPlaying ? "Wstrzymaj" : "Odtwórz")
+                        }.buttonStyle(PressableIconStyle()).accessibilityLabel(previewer.isPlaying ? L("Wstrzymaj", "Pause") : L("Odtwórz", "Play"))
                         Scrubber(item: it, store: store, waveforms: store.waveforms, previewer: previewer)
                         Text("\(Fmt.clock(previewer.time)) / \(Fmt.clock(it.duration))").font(.system(size: 11)).monospacedDigit().foregroundStyle(.secondary)
                             .lineLimit(1).fixedSize(horizontal: true, vertical: false)

@@ -43,21 +43,22 @@ struct ContentArea: View {
     @ViewBuilder private func contentBody(_ vis: [MediaItem]) -> some View {
         Group {
             if store.sources.isEmpty {
-                EmptyState(icon: "folder.badge.plus", title: "Dodaj pierwsze źródło",
-                           text: "Wskaż folder, pojedyncze pliki albo bibliotekę FCP. Możesz też przeciągnąć je tutaj z Findera. Appka zaindeksuje pliki i będzie na bieżąco obserwować zmiany.",
-                           extra: AnyView(Menu("Dodaj…") { AddMenuItems(store: store) }.menuStyle(.borderedButton).fixedSize()))
+                EmptyState(icon: "folder.badge.plus", title: L("Dodaj pierwsze źródło", "Add your first source"),
+                           text: L("Wskaż folder, pojedyncze pliki albo bibliotekę FCP. Możesz też przeciągnąć je tutaj z Findera. Appka zaindeksuje pliki i będzie na bieżąco obserwować zmiany.",
+                                   "Point to a folder, individual files, or an FCP library. You can also drag them here from Finder. The app will index the files and keep watching for changes."),
+                           extra: AnyView(Menu(L("Dodaj…", "Add…")) { AddMenuItems(store: store) }.menuStyle(.borderedButton).fixedSize()))
             } else if store.isIndexing && store.items.isEmpty {
-                VStack(spacing: 10) { ProgressView().controlSize(.small); Text("Indeksuję pliki…").font(.system(size: 12)).foregroundStyle(.secondary) }
+                VStack(spacing: 10) { ProgressView().controlSize(.small); Text(L("Indeksuję pliki…", "Indexing files…")).font(.system(size: 12)).foregroundStyle(.secondary) }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if vis.isEmpty {
                 if !store.search.isEmpty {
-                    EmptyState(icon: "magnifyingglass", title: "Brak wyników", text: "Nic w „\(store.categoryTitle)” nie pasuje do „\(store.search)”.",
-                               button: "Szukaj we wszystkich") { store.select(category: .all) }
+                    EmptyState(icon: "magnifyingglass", title: L("Brak wyników", "No results"), text: L("Nic w „\(store.categoryTitle)” nie pasuje do „\(store.search)”.", "Nothing in “\(store.categoryTitle)” matches “\(store.search)”."),
+                               button: L("Szukaj we wszystkich", "Search everywhere")) { store.select(category: .all) }
                 } else if store.config.filters.isActive {
-                    EmptyState(icon: "line.3.horizontal.decrease.circle", title: "Filtry wykluczają wszystko", text: "Żaden element w tej kategorii nie spełnia aktywnych filtrów.",
-                               button: "Wyczyść filtry") { store.config.filters = .none }
+                    EmptyState(icon: "line.3.horizontal.decrease.circle", title: L("Filtry wykluczają wszystko", "Filters exclude everything"), text: L("Żaden element w tej kategorii nie spełnia aktywnych filtrów.", "Nothing in this category matches the active filters."),
+                               button: L("Wyczyść filtry", "Clear filters")) { store.config.filters = .none }
                 } else {
-                    EmptyState(icon: "tray", title: "Ta kategoria jest pusta", text: "Przeciągnij tu pliki z panelu albo wybierz inną kategorię.")
+                    EmptyState(icon: "tray", title: L("Ta kategoria jest pusta", "This category is empty"), text: L("Przeciągnij tu pliki z panelu albo wybierz inną kategorię.", "Drop files here from the panel, or choose another category."))
                 }
             } else if store.config.viewMode == .grid {
                 ScrollViewReader { proxy in
@@ -103,7 +104,7 @@ struct PreviewBar: View {
 
     private var expandButton: some View {
         Button { store.data.settings.bigMediaPreview = true } label: { Image(systemName: "chevron.up").font(.system(size: 11)).frame(width: 24, height: 24) }
-            .buttonStyle(PressableIconStyle()).foregroundStyle(.secondary).help("Większy podgląd").accessibilityLabel("Większy podgląd")
+            .buttonStyle(PressableIconStyle()).foregroundStyle(.secondary).help(L("Większy podgląd", "Bigger preview")).accessibilityLabel(L("Większy podgląd", "Bigger preview"))
     }
 
     var body: some View {
@@ -120,7 +121,7 @@ struct PreviewBar: View {
                             .font(.system(size: 11)).foregroundStyle(.secondary)
                         Spacer(minLength: 0)
                         Button { store.data.settings.bigMediaPreview = false } label: {
-                            Label("Mniejszy podgląd", systemImage: "chevron.down").font(.system(size: 11))
+                            Label(L("Mniejszy podgląd", "Smaller preview"), systemImage: "chevron.down").font(.system(size: 11))
                         }.buttonStyle(.plain).foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 0)
@@ -151,7 +152,7 @@ struct PreviewBar: View {
                         Image(systemName: previewer.isPlaying ? "pause.fill" : "play.fill").font(.system(size: 12))
                             .frame(width: 30, height: 30).background(Circle().fill(accent)).foregroundStyle(.white)
                     }
-                    .buttonStyle(PressableIconStyle()).accessibilityLabel(previewer.isPlaying ? "Wstrzymaj" : "Odtwórz")
+                    .buttonStyle(PressableIconStyle()).accessibilityLabel(previewer.isPlaying ? L("Wstrzymaj", "Pause") : L("Odtwórz", "Play"))
                     VStack(alignment: .leading, spacing: 3) {
                         HStack {
                             Text(it.name).font(.system(size: 12, weight: .medium)).lineLimit(1)
@@ -167,9 +168,9 @@ struct PreviewBar: View {
             } else {
                 HStack(spacing: 6) {
                     if store.isIndexing { ProgressView().controlSize(.mini) }
-                    Text(store.isIndexing ? "Indeksuję…" : "\(store.visible.count) elementów").font(.system(size: 11)).foregroundStyle(.tertiary)
+                    Text(store.isIndexing ? L("Indeksuję…", "Indexing…") : L("\(store.visible.count) elementów", "\(store.visible.count) items")).font(.system(size: 11)).foregroundStyle(.tertiary)
                     Spacer()
-                    Text("Spacja: odsłuch  ·  przeciągnij kafel na timeline w FCP").font(.system(size: 11)).foregroundStyle(.tertiary)
+                    Text(L("Spacja: odsłuch  ·  przeciągnij kafel na timeline w FCP", "Space: play  ·  drag a tile onto the FCP timeline")).font(.system(size: 11)).foregroundStyle(.tertiary)
                 }.padding(.horizontal, 12).frame(height: 28)
             }
         }
@@ -202,6 +203,6 @@ struct Scrubber: View {
             .gesture(DragGesture(minimumDistance: 0).onChanged { previewer.seek(to: $0.location.x / max(1, geo.size.width)) })
         }
         .frame(height: item.kind == .audio ? 34 : 14)
-        .accessibilityLabel("Pozycja odtwarzania").accessibilityValue("\(Int(previewer.fraction * 100)) procent")
+        .accessibilityLabel(L("Pozycja odtwarzania", "Playback position")).accessibilityValue(L("\(Int(previewer.fraction * 100)) procent", "\(Int(previewer.fraction * 100)) percent"))
     }
 }

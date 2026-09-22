@@ -1,16 +1,20 @@
 import Foundation
 
+/// Język etykiet w DockCore (Ustawienia → Ogólne → Język ustawia to z poziomu aplikacji).
+public enum UILanguage { public static var current: AppLanguage = .pl }
+func LL(_ pl: String, _ en: String) -> String { UILanguage.current == .en ? en : pl }
+
 public enum PanelMode: String, Codable, CaseIterable, Sendable {
     case hover, followApp, pinned
     public var label: String {
-        switch self { case .hover: "Po najechaniu"; case .followApp: "Podążaj za aplikacją"; case .pinned: "Przypięty" }
+        switch self { case .hover: LL("Po najechaniu", "On hover"); case .followApp: LL("Podążaj za aplikacją", "Follow app"); case .pinned: LL("Przypięty", "Pinned") }
     }
 }
 
 public enum NotchPlacement: String, Codable, CaseIterable, Sendable {
     case topCenter, rightMiddle, leftMiddle
     public var label: String {
-        switch self { case .topCenter: "Notch (góra, środek)"; case .rightMiddle: "Prawa krawędź"; case .leftMiddle: "Lewa krawędź" }
+        switch self { case .topCenter: LL("Notch (góra, środek)", "Notch (top center)"); case .rightMiddle: LL("Prawa krawędź", "Right edge"); case .leftMiddle: LL("Lewa krawędź", "Left edge") }
     }
     public var isSide: Bool { self != .topCenter }
     /// Stare zapisy (rogi, dół) nie mogą wywalić ustawień: rogi -> najbliższa krawędź, dół -> notch.
@@ -27,14 +31,16 @@ public enum NotchPlacement: String, Codable, CaseIterable, Sendable {
 public enum VirtualNotchMode: String, Codable, CaseIterable, Sendable {
     case auto, always, never
     public var label: String {
-        switch self { case .auto: "Tylko bez prawdziwego notcha"; case .always: "Zawsze"; case .never: "Nigdy" }
+        switch self { case .auto: LL("Tylko bez prawdziwego notcha", "Only without a real notch"); case .always: LL("Zawsze", "Always"); case .never: LL("Nigdy", "Never") }
     }
 }
 
 /// Kolor podświetlenia notcha (z palety ikony łapki).
+public enum AppLanguage: String, Codable, CaseIterable, Sendable { case pl, en }
+
 public enum GlowChoice: String, Codable, CaseIterable, Sendable {
     case violet, teal, blue
-    public var label: String { switch self { case .violet: "Fioletowy"; case .teal: "Turkusowy"; case .blue: "Niebieski" } }
+    public var label: String { switch self { case .violet: LL("Fioletowy", "Violet"); case .teal: LL("Turkusowy", "Teal"); case .blue: LL("Niebieski", "Blue") } }
     /// Kolor w formacie #RRGGBB (do kółka kolorów i zapisu).
     public var hex: String { switch self { case .violet: "B87AFF"; case .teal: "5CE0D1"; case .blue: "5C8CFF" } }
 }
@@ -55,21 +61,21 @@ public enum HexColor {
 /// Co dzieje się przy notchu, gdy kursor się zbliża.
 public enum NotchEffect: String, Codable, CaseIterable, Sendable {
     case none, glow, paw
-    public var label: String { switch self { case .none: "Brak"; case .glow: "Podświetlenie"; case .paw: "Łapka" } }
+    public var label: String { switch self { case .none: LL("Brak", "None"); case .glow: LL("Podświetlenie", "Glow"); case .paw: LL("Łapka", "Paw") } }
     /// Nieznana wartość (np. usunięty „cat” ze starego zapisu) nie może wywalić całych ustawień.
     public init(from d: Decoder) throws { self = NotchEffect(rawValue: try d.singleValueContainer().decode(String.self)) ?? .glow }
 }
 
 public enum CategoryLayout: String, Codable, CaseIterable, Sendable {
     case sidebar, chips
-    public var label: String { self == .sidebar ? "Pionowy (sidebar)" : "Poziomy (pigułki)" }
+    public var label: String { self == .sidebar ? LL("Pionowy (sidebar)", "Vertical (sidebar)") : LL("Poziomy (pigułki)", "Horizontal (pills)") }
 }
 
 public enum AccentChoice: String, Codable, CaseIterable, Sendable {
     case system, graphite, blue, violet, green, orange
     public var label: String {
-        switch self { case .system: "Systemowy"; case .graphite: "Grafit"; case .blue: "Niebieski"
-        case .violet: "Fioletowy"; case .green: "Zielony"; case .orange: "Pomarańczowy" }
+        switch self { case .system: LL("Systemowy", "System"); case .graphite: LL("Grafit", "Graphite"); case .blue: LL("Niebieski", "Blue")
+        case .violet: LL("Fioletowy", "Violet"); case .green: LL("Zielony", "Green"); case .orange: LL("Pomarańczowy", "Orange") }
     }
 }
 
@@ -109,9 +115,13 @@ public struct AppSettings: Codable, Equatable, Sendable {
     var hotkeyOff = false
     /// Klawisz cyfrowy w panelu: „Pokaż w Finderze” dla zaznaczonych (7, 8, 9 albo 0; -1 = wyłączony).
     public var finderKey: Int = 9
+    /// Język interfejsu.
+    public var language: AppLanguage = .pl
+    /// Ulubione zawsze na górze listy, niezależnie od sortowania i kategorii.
+    public var favoritesFirst: Bool = true
     public init() {}
 
-    enum CodingKeys: String, CodingKey { case glowHex, glowIntensity, hotkeySpec, hotkeyOff, finderKey, sidePosition, autoplayOnSelect, waveformAutoScale, bigMediaPreview, quickKeys, notchGlow, notchEffect, glowColor, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
+    enum CodingKeys: String, CodingKey { case glowHex, glowIntensity, hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, sidePosition, autoplayOnSelect, waveformAutoScale, bigMediaPreview, quickKeys, notchGlow, notchEffect, glowColor, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
     /// Tolerancyjne dekodowanie: brakujący klucz (np. po aktualizacji) = wartość domyślna, a nie utrata ustawień.
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -144,6 +154,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         hotkeyOff = try c.decodeIfPresent(Bool.self, forKey: .hotkeyOff) ?? def.hotkeyOff
         let fk = try c.decodeIfPresent(Int.self, forKey: .finderKey) ?? def.finderKey
         finderKey = [7, 8, 9, 0, -1].contains(fk) ? fk : def.finderKey
+        language = try c.decodeIfPresent(AppLanguage.self, forKey: .language) ?? def.language
+        favoritesFirst = try c.decodeIfPresent(Bool.self, forKey: .favoritesFirst) ?? def.favoritesFirst
     }
 }
 

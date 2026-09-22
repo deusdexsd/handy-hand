@@ -1,8 +1,8 @@
 import Foundation
 
 enum AppInfo {
-    /// Nazwa produktu w jednym miejscu: zmieni się później.
-    static let name = "Łapka"
+    /// Nazwa produktu w jednym miejscu.
+    static let name = "Handy"
     /// Folder danych zostaje pod starą nazwą, żeby zmiana nazwy produktu nie odcięła Cię od zapisanych źródeł, ulubionych i kolekcji.
     static let dataFolder = "MidniteDock"
     /// Znacznik budowy (data.godzina), żeby dało się odróżnić starą wersję od nowej.

@@ -2,13 +2,13 @@ import Foundation
 
 public enum MediaKind: String, Codable, Sendable, CaseIterable, Hashable {
     case audio, video, image
-    public var label: String { switch self { case .audio: "Audio"; case .video: "Wideo"; case .image: "Obraz" } }
+    public var label: String { switch self { case .audio: "Audio"; case .video: LL("Wideo", "Video"); case .image: LL("Obraz", "Image") } }
 }
 
 /// Klasa elementu: audio dzieli się na SFX i muzykę (wg długości albo ręcznie), do tego wideo i obrazy.
 public enum MediaClass: String, Codable, Sendable, CaseIterable, Hashable {
     case sfx, music, video, image
-    public var label: String { switch self { case .sfx: "SFX"; case .music: "Muzyka"; case .video: "Wideo"; case .image: "Obrazy" } }
+    public var label: String { switch self { case .sfx: "SFX"; case .music: LL("Muzyka", "Music"); case .video: LL("Wideo", "Video"); case .image: LL("Obrazy", "Images") } }
     public var kind: MediaKind { switch self { case .sfx, .music: .audio; case .video: .video; case .image: .image } }
     public var hasDuration: Bool { self != .image }
 }

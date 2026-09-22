@@ -3,5 +3,5 @@
 cd "$(dirname "$0")"
 CONFIG=release ./build-app.sh > /dev/null || exit 1
 rm -rf dist && mkdir -p dist
-cp -R ~/Library/Caches/MidniteDockBuild-App/MidniteDock.app "dist/Łapka.app"
-echo "gotowe: $(pwd)/dist/Łapka.app"
+cp -R ~/Library/Caches/MidniteDockBuild-App/MidniteDock.app "dist/Handy.app"
+echo "gotowe: $(pwd)/dist/Handy.app"

@@ -82,8 +82,8 @@ struct TileView: View {
                     Text("×\(store.copies(item))").font(.system(size: 10, weight: .semibold)).monospacedDigit()
                         .padding(.horizontal, 5).padding(.vertical, 1.5).background(.ultraThinMaterial, in: Capsule())
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing).padding(5)
-                        .help("Ten plik występuje w \(store.copies(item)) miejscach (duplikaty są zwinięte)")
-                        .accessibilityLabel("\(store.copies(item)) kopie")
+                        .help(L("Ten plik występuje w \(store.copies(item)) miejscach (duplikaty są zwinięte)", "This file appears in \(store.copies(item)) places (duplicates are collapsed)"))
+                        .accessibilityLabel(L("\(store.copies(item)) kopie", "\(store.copies(item)) copies"))
                 }
                 if fav || hover {
                     Image(systemName: fav ? "star.fill" : "star")
@@ -150,12 +150,19 @@ struct RowView: View {
     static let rowPadding: CGFloat = 8, groupWidth: CGFloat = 80, spacing: CGFloat = 10
     @Environment(\.dockAccent) private var accent
     @State private var pressed = false
+    @State private var hover = false
 
     var body: some View {
         let selected = store.selection.contains(item.path)
+        let fav = store.isFavorite(item)
         HStack(spacing: Self.spacing) {
-            Image(systemName: store.isFavorite(item) ? "star.fill" : MetaText.icon(item))
-                .font(.system(size: 12)).foregroundStyle(store.isFavorite(item) ? Color.yellow : Color.secondary).frame(width: 16)
+            // Ikona typu; przy ulubionym albo najechaniu zamienia się w klikalną gwiazdkę (dodaje/usuwa z ulubionych).
+            Image(systemName: fav ? "star.fill" : (hover ? "star" : MetaText.icon(item)))
+                .font(.system(size: 12)).foregroundStyle(fav ? Color.yellow : Color.secondary).frame(width: 16, height: 16)
+                .contentShape(Rectangle())
+                .onTapGesture { store.toggleFavorite([item.path]) }
+                .help(fav ? L("Usuń z ulubionych", "Remove from favorites") : L("Dodaj do ulubionych", "Add to favorites"))
+                .onHover { hover = $0 }
             Text(item.name).font(.system(size: 12, weight: .medium)).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
             if item.kind == .audio {
                 WaveformLane(item: item, peaks: waveforms.peaks(for: item), scale: store.waveformScale(for: item),
@@ -185,41 +192,41 @@ enum ItemMenu {
         let paths = store.dragPaths(for: item)
         let m = NSMenu()
         let allFav = paths.allSatisfy { store.org.favorites.contains($0) }
-        m.addItem(ClosureMenuItem(allFav ? "Usuń z ulubionych" : "Dodaj do ulubionych") { store.toggleFavorite(paths) })
-        let coll = NSMenuItem(title: "Dodaj do kolekcji", action: nil, keyEquivalent: "")
+        m.addItem(ClosureMenuItem(allFav ? L("Usuń z ulubionych", "Remove from favorites") : L("Dodaj do ulubionych", "Add to favorites")) { store.toggleFavorite(paths) })
+        let coll = NSMenuItem(title: L("Dodaj do kolekcji", "Add to collection"), action: nil, keyEquivalent: "")
         let sub = NSMenu()
         for c in store.org.collections { sub.addItem(ClosureMenuItem(c.name) { store.add(paths, toCollection: c.id) }) }
         if !store.org.collections.isEmpty { sub.addItem(.separator()) }
-        sub.addItem(ClosureMenuItem("Nowa kolekcja…") {
-            store.ask("Nowa kolekcja", placeholder: "Nazwa kolekcji", action: "Utwórz") { store.newCollection(name: $0, paths: paths) }
+        sub.addItem(ClosureMenuItem(L("Nowa kolekcja…", "New collection…")) {
+            store.ask(L("Nowa kolekcja", "New collection"), placeholder: L("Nazwa kolekcji", "Collection name"), action: L("Utwórz", "Create")) { store.newCollection(name: $0, paths: paths) }
         })
         coll.submenu = sub; m.addItem(coll)
         if case .collection(let id) = store.config.category {
-            m.addItem(ClosureMenuItem("Usuń z tej kolekcji") { store.remove(paths, fromCollection: id) })
+            m.addItem(ClosureMenuItem(L("Usuń z tej kolekcji", "Remove from this collection")) { store.remove(paths, fromCollection: id) })
         }
         if item.kind == .audio {
             let cur = store.mediaClass(item)
             let overridden = store.org.classOverrides[item.path] != nil
-            let tm = NSMenuItem(title: "Typ dźwięku", action: nil, keyEquivalent: "")
+            let tm = NSMenuItem(title: L("Typ dźwięku", "Sound type"), action: nil, keyEquivalent: "")
             let ts = NSMenu()
             ts.addItem(ClosureMenuItem("SFX", checked: overridden && cur == .sfx) { store.setClass(.sfx, for: paths) })
-            ts.addItem(ClosureMenuItem("Muzyka", checked: overridden && cur == .music) { store.setClass(.music, for: paths) })
+            ts.addItem(ClosureMenuItem(L("Muzyka", "Music"), checked: overridden && cur == .music) { store.setClass(.music, for: paths) })
             ts.addItem(.separator())
-            ts.addItem(ClosureMenuItem("Automatycznie (wg długości)", checked: !overridden) { store.setClass(nil, for: paths) })
+            ts.addItem(ClosureMenuItem(L("Automatycznie (wg długości)", "Automatic (by length)"), checked: !overridden) { store.setClass(nil, for: paths) })
             tm.submenu = ts; m.addItem(tm)
         }
-        m.addItem(ClosureMenuItem("Dodaj tag…") {
-            store.ask("Dodaj tag", placeholder: "np. dramat", action: "Dodaj") { store.addTag($0, to: paths) }
+        m.addItem(ClosureMenuItem(L("Dodaj tag…", "Add tag…")) {
+            store.ask(L("Dodaj tag", "Add tag"), placeholder: L("np. dramat", "e.g. drama"), action: L("Dodaj", "Add")) { store.addTag($0, to: paths) }
         })
         m.addItem(.separator())
         let copies = store.duplicateItems(of: item)
         if copies.count > 1 {
-            let dm = NSMenuItem(title: "Kopie (\(copies.count))", action: nil, keyEquivalent: "")
+            let dm = NSMenuItem(title: L("Kopie (\(copies.count))", "Copies (\(copies.count))"), action: nil, keyEquivalent: "")
             let sub = NSMenu()
             for c in copies {
                 let srcName = store.sources.first { $0.id == c.sourceID }?.name ?? "?"
                 let parent = URL(fileURLWithPath: c.path).deletingLastPathComponent().lastPathComponent
-                sub.addItem(ClosureMenuItem("\(srcName) › \(parent)\(c.path == item.path ? "  (pokazana)" : "")") {
+                sub.addItem(ClosureMenuItem("\(srcName) › \(parent)" + (c.path == item.path ? L("  (pokazana)", "  (shown)") : "")) {
                     NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: c.path)])
                 })
             }
@@ -227,11 +234,11 @@ enum ItemMenu {
         }
         let srcKind = store.sources.first { $0.id == item.sourceID }?.kind
         if srcKind != .fcpLibrary {
-            m.addItem(ClosureMenuItem("Zmień nazwę…") { store.beginRename(item) })
+            m.addItem(ClosureMenuItem(L("Zmień nazwę…", "Rename…")) { store.beginRename(item) })
         }
-        if srcKind == .files { m.addItem(ClosureMenuItem("Usuń z biblioteki") { store.removeFromLibrary(item) }) }
-        m.addItem(ClosureMenuItem("Pokaż w Finderze") { NSWorkspace.shared.activateFileViewerSelecting(paths.map { URL(fileURLWithPath: $0) }) })
-        m.addItem(ClosureMenuItem("Skopiuj ścieżkę") {
+        if srcKind == .files { m.addItem(ClosureMenuItem(L("Usuń z biblioteki", "Remove from library")) { store.removeFromLibrary(item) }) }
+        m.addItem(ClosureMenuItem(L("Pokaż w Finderze", "Reveal in Finder")) { NSWorkspace.shared.activateFileViewerSelecting(paths.map { URL(fileURLWithPath: $0) }) })
+        m.addItem(ClosureMenuItem(L("Skopiuj ścieżkę", "Copy path")) {
             NSPasteboard.general.clearContents(); NSPasteboard.general.setString(paths.joined(separator: "\n"), forType: .string)
         })
         return m

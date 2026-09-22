@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             store.addSource(url: d.appendingPathComponent("Zdjecia"), kind: .folder)
             store.addSource(url: d.appendingPathComponent("DevLibrary.fcpbundle"), kind: .fcpLibrary)
         }
+        if ProcessInfo.processInfo.environment["MIDNITEDOCK_LANG"] == "en" { store.data.settings.language = .en }   // podgląd wersji angielskiej (dev)
         store.openSettings = { [weak self] in self?.showSettings() }
         controller = PanelController(store: store)
         controller.show()
@@ -49,31 +50,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-        let ver = NSMenuItem(title: "\(AppInfo.name) · wersja \(AppInfo.build)", action: nil, keyEquivalent: ""); ver.isEnabled = false
+        let ver = NSMenuItem(title: "\(AppInfo.name) · \(L("wersja", "version")) \(AppInfo.build)", action: nil, keyEquivalent: ""); ver.isEnabled = false
         menu.addItem(ver); menu.addItem(.separator())
-        menu.addItem(ClosureMenuItem((controller.expanded ? "Ukryj panel" : "Pokaż panel") + (store.settings.toggleHotkey.map { "  (\(HotKeyText.string($0)))" } ?? "")) { [weak self] in self?.controller.toggleVisible() })
-        let modes = NSMenuItem(title: "Tryb panelu", action: nil, keyEquivalent: "")
+        menu.addItem(ClosureMenuItem((controller.expanded ? L("Ukryj panel", "Hide panel") : L("Pokaż panel", "Show panel")) + (store.settings.toggleHotkey.map { "  (\(HotKeyText.string($0)))" } ?? "")) { [weak self] in self?.controller.toggleVisible() })
+        let modes = NSMenuItem(title: L("Tryb panelu", "Panel mode"), action: nil, keyEquivalent: "")
         let sub = NSMenu()
         for mode in PanelMode.allCases { sub.addItem(ClosureMenuItem(mode.label, checked: store.settings.mode == mode) { [weak self] in self?.store.settings.mode = mode }) }
         modes.submenu = sub; menu.addItem(modes)
-        menu.addItem(ClosureMenuItem("Odśwież foldery") { [weak self] in self?.store.reindexAll() })
-        menu.addItem(ClosureMenuItem("Otwieraj przy logowaniu", checked: LoginItem.isOn) {
+        menu.addItem(ClosureMenuItem(L("Odśwież foldery", "Refresh folders")) { [weak self] in self?.store.reindexAll() })
+        menu.addItem(ClosureMenuItem(L("Otwieraj przy logowaniu", "Open at login"), checked: LoginItem.isOn) {
             if let err = LoginItem.set(!LoginItem.isOn) {
-                let a = NSAlert(); a.messageText = "Nie udało się zmienić otwierania przy logowaniu"; a.informativeText = err; a.runModal()
+                let a = NSAlert(); a.messageText = L("Nie udało się zmienić otwierania przy logowaniu", "Couldn\u{27}t change open-at-login"); a.informativeText = err; a.runModal()
             }
         })
         menu.addItem(.separator())
-        let s = ClosureMenuItem("Ustawienia…") { [weak self] in self?.showSettings() }; s.keyEquivalent = ","
+        let s = ClosureMenuItem(L("Ustawienia…", "Settings…")) { [weak self] in self?.showSettings() }; s.keyEquivalent = ","
         menu.addItem(s)
         menu.addItem(.separator())
-        let q = NSMenuItem(title: "Zakończ \(AppInfo.name)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let q = NSMenuItem(title: L("Zakończ \(AppInfo.name)", "Quit \(AppInfo.name)"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(q)
     }
 
     func showSettings() {
         if settingsWindow == nil {
             let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 520), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
-            w.title = "Ustawienia"; w.isReleasedWhenClosed = false
+            w.title = L("Ustawienia", "Settings"); w.isReleasedWhenClosed = false
             w.contentView = NSHostingView(rootView: SettingsView(store: store))
             w.center(); settingsWindow = w
         }
