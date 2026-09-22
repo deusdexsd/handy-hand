@@ -391,6 +391,20 @@ final class LibraryStore: ObservableObject {
         selection.contains(item.path) ? visible.filter { selection.contains($0.path) }.map(\.path) : [item.path]
     }
 
+    /// Ścieżki bieżącego zaznaczenia, w kolejności widoku (do ⌘C).
+    var selectedPaths: [String] { visible.filter { selection.contains($0.path) }.map(\.path) }
+
+    /// Kopiuje pliki do schowka jako PLIKI (nie tekst) — wklejenie w Finderze albo innej aplikacji wkleja same pliki,
+    /// tak jak po ⌘C na plikach w Finderze. Osobno od „Skopiuj ścieżkę” (kopiuje tekst do wklejenia np. w terminalu).
+    func copyFilesToPasteboard(_ paths: [String]) {
+        guard !paths.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.writeObjects(paths.map { NSURL(fileURLWithPath: $0) })
+    }
+
+    /// ⌘C w panelu: kopiuje bieżące zaznaczenie jako pliki.
+    func copySelectionToPasteboard() { copyFilesToPasteboard(selectedPaths) }
+
     // MARK: ulubione, tagi, kolekcje
     func toggleFavorite(_ paths: [String]) {
         let all = equivalents(paths)

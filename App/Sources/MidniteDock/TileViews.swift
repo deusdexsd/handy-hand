@@ -239,6 +239,7 @@ enum ItemMenu {
         }
         if srcKind == .files { m.addItem(ClosureMenuItem(L("Usuń z biblioteki", "Remove from library")) { store.removeFromLibrary(item) }) }
         m.addItem(ClosureMenuItem(L("Pokaż w Finderze", "Reveal in Finder")) { NSWorkspace.shared.activateFileViewerSelecting(paths.map { URL(fileURLWithPath: $0) }) })
+        m.addItem(ClosureMenuItem(L("Kopiuj pliki", "Copy files") + "  ⌘C") { store.copyFilesToPasteboard(paths) })
         m.addItem(ClosureMenuItem(L("Skopiuj ścieżkę", "Copy path")) {
             NSPasteboard.general.clearContents(); NSPasteboard.general.setString(paths.joined(separator: "\n"), forType: .string)
         })

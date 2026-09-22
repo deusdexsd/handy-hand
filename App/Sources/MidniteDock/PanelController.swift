@@ -3,7 +3,7 @@ import SwiftUI
 import Combine
 import DockCore
 
-enum PanelKey { case space, up, down, left, right, enter, escape, digit(Int, shift: Bool) }
+enum PanelKey { case space, up, down, left, right, enter, escape, copy, digit(Int, shift: Bool) }
 
 final class DockPanel: NSPanel {
     var onKey: ((PanelKey) -> Bool)?
@@ -32,6 +32,10 @@ final class DockPanel: NSPanel {
             case .digit:
                 // Skróty cyfrowe działają TYLKO z ⌘ — same cyfry zawsze trafiają tam, gdzie akurat pisze się tekst.
                 if event.modifierFlags.contains(.command), onKey?(k) == true { return }
+            case .copy:
+                // ⌘C poza polem tekstowym kopiuje zaznaczone pliki; w polu (np. wyszukiwarka) ma kopiować zwykły tekst, więc go nie łapiemy.
+                if event.modifierFlags.contains(.command), event.modifierFlags.intersection([.control, .option, .shift]).isEmpty,
+                   !(firstResponder is NSTextView), onKey?(k) == true { return }
             default:
                 if !(firstResponder is NSTextView), event.modifierFlags.intersection([.command, .control, .option]).isEmpty,
                    onKey?(k) == true { return }
@@ -49,6 +53,7 @@ final class DockPanel: NSPanel {
         case 124: return .right
         case 36, 76: return .enter
         case 53: return .escape
+        case 8: return .copy
         default:
             let digits: [UInt16: Int] = [18: 1, 19: 2, 20: 3, 21: 4, 23: 5, 22: 6, 26: 7, 28: 8, 25: 9, 29: 0]
             return digits[e.keyCode].map { .digit($0, shift: e.modifierFlags.contains(.shift)) }
@@ -239,6 +244,7 @@ final class PanelController: NSObject {
         case .left: store.moveSelection(.left); return true
         case .right: store.moveSelection(.right); return true
         case .enter: store.renameSelected(); return store.selection.count == 1     // jak w Finderze: Enter = zmiana nazwy
+        case .copy: store.copySelectionToPasteboard(); return !store.selection.isEmpty     // jak w Finderze: ⌘C = kopiuj pliki do schowka
         case .escape: return false
         }
     }
@@ -670,6 +676,22 @@ enum SelfTest {
                                                   context: nil, characters: "", charactersIgnoringModifiers: "", isARepeat: false, keyCode: 125)!)   // strzałka w dół
                 await wait(0.2)
                 print("SELF 32d strzałka w dół zaraz po rozwinięciu (bez klikania w pole): zmieniło zaznaczenie=\(store.primary?.path != beforePrimary)")
+
+                // ⌘C: poza polem kopiuje pliki zaznaczenia do schowka; sama litera 'c' w polu ma zostać tekstem, nie skrótem.
+                NSPasteboard.general.clearContents()
+                store.selection = Set(store.visible.prefix(2).map(\.path))
+                panel.sendEvent(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [.command], timestamp: 0, windowNumber: panel.windowNumber,
+                                                  context: nil, characters: "c", charactersIgnoringModifiers: "c", isARepeat: false, keyCode: 8)!)
+                await wait(0.1)
+                let copied = (NSPasteboard.general.readObjects(forClasses: [NSURL.self]) as? [URL])?.map(\.path) ?? []
+                print("SELF 32e ⌘C poza polem: skopiowane pliki=\(copied.count), zgadza się z zaznaczeniem=\(Set(copied) == store.selection)")
+                NSPasteboard.general.clearContents()
+                panel.makeFirstResponder(field); await wait(0.2)
+                panel.sendEvent(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [.command], timestamp: 0, windowNumber: panel.windowNumber,
+                                                  context: nil, characters: "c", charactersIgnoringModifiers: "c", isARepeat: false, keyCode: 8)!)
+                await wait(0.1)
+                let copiedInField = (NSPasteboard.general.readObjects(forClasses: [NSURL.self]) as? [URL]) ?? []
+                print("SELF 32f ⌘C w polu tekstowym: nie łapiemy jako skrót plikowy=\(copiedInField.isEmpty)")
             } else { print("SELF 32 brak pola wyszukiwania w panelu") }
         }
         // Zapis na dysk
