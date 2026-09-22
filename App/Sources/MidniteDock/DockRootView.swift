@@ -42,6 +42,17 @@ struct DockRootView: View {
         .background(VisualEffect(material: .hudWindow))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.white.opacity(0.10), lineWidth: 0.5))
+        .overlay(alignment: .top) {
+            // Ciągła, spokojna poświata przy górnej krawędzi panelu, gdy efekt notcha to Podświetlenie — żeby przejście
+            // z narastającej poświaty uchwytu do rozwiniętego panelu nie urywało się nagle, tylko płynnie „się ustatkowało”.
+            if store.settings.notchEffect == .glow {
+                LinearGradient(colors: [PanelController.glowTint(store.settings).opacity(min(1, 0.18 * store.settings.glowIntensity)), .clear],
+                               startPoint: .top, endPoint: .bottom)
+                    .frame(height: 64)
+                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: 16, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 16, style: .continuous))
+                    .allowsHitTesting(false)
+            }
+        }
         .overlay(ResizeGrips(store: store, atBottom: panel.atBottom))
         .environment(\.dockAccent, accent)
         .environment(\.sourceTints, store.settings.sourceTints)

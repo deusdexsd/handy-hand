@@ -75,13 +75,17 @@ struct HandleView: View {
         let k = state.glowIntensity                 // siła podświetlenia z Ustawień
         ZStack(alignment: .top) {
             if realNotch {
-                // Prawdziwy notch: w spoczynku nic. Poświata wychodzi zza czarnego kształtu równego notchowi
-                // (nad fizycznym notchem nie ma pikseli, więc sam kształt jest niewidoczny).
-                UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10, style: .continuous)
-                    .fill(Color.black).frame(width: anchorSize.width - 2, height: anchorSize.height)
-                    .shadow(color: glowColor.opacity(min(1, 0.95 * glow * k)), radius: (8 + 22 * glow) * k)
-                    .shadow(color: glowColor.opacity(min(1, 0.65 * glow * k)), radius: (3 + 6 * glow) * k)
-                    .animation(.easeOut(duration: 0.18), value: glow)
+                // Prawdziwy notch: w spoczynku nic. Poświata ma wylewać się spod dolnej krawędzi notcha, nie promieniować
+                // równo we wszystkie strony (dlatego osobny gradient „od spodu”, a nie symetryczny .shadow wokół kształtu).
+                ZStack(alignment: .top) {
+                    RadialGradient(colors: [glowColor.opacity(min(1, 0.8 * glow * k)), .clear], center: .top, startRadius: 0, endRadius: 90)
+                        .frame(width: anchorSize.width + 60, height: 140)
+                        .offset(y: anchorSize.height - 2)
+                        .allowsHitTesting(false)
+                    UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10, style: .continuous)
+                        .fill(Color.black).frame(width: anchorSize.width - 2, height: anchorSize.height)
+                }
+                .animation(.easeOut(duration: 0.18), value: glow)
             } else if showsCap {
                 let shape = UnevenRoundedRectangle(topLeadingRadius: side == 1 ? 12 : 0, bottomLeadingRadius: side == 1 || side == 0 ? 12 : 0,
                                                    bottomTrailingRadius: side == -1 || side == 0 ? 12 : 0, topTrailingRadius: side == -1 ? 12 : 0, style: .continuous)
