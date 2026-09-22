@@ -383,7 +383,10 @@ final class LibraryStore: ObservableObject {
 
     func sortByNameForTest() { config.sort = .name; config.ascending = true }
 
-    func pressDown(_ item: MediaItem) {
+    /// Wciśnięcie (przed puszczeniem): daje od razu podgląd zaznaczenia dla przeciągnięcia. Przy Shift/⌘ NIE dotykamy
+    /// zaznaczenia — o wyniku decyduje `click(...)` na puszczeniu, które umie zaznaczyć zakres (Shift) albo dołożyć (⌘).
+    func pressDown(_ item: MediaItem, shift: Bool = false, command: Bool = false) {
+        guard !shift, !command else { return }
         if !selection.contains(item.path) { selection = [item.path]; anchorPath = item.path; primary = item }
     }
 

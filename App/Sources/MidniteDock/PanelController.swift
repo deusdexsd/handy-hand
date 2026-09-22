@@ -626,6 +626,21 @@ enum SelfTest {
             _ = controller.debugKey(.digit(5, shift: false)); print(store.isFavorite(song))
             store.setClass(nil, for: [song.path]); store.toggleFavorite([song.path])
         }
+        // Shift-klik zakresowy: pressDown (mouseDown) nie może zerować zaznaczenia, jeśli trzymany jest Shift — o wyniku decyduje click() na puszczeniu.
+        store.select(category: .all); store.config.filters = .none; await wait(0.2)
+        if store.visible.count >= 4 {
+            let vis = store.visible
+            store.click(vis[0], command: false, shift: false)                              // zwykły klik: kotwica na 1. elemencie
+            store.pressDown(vis[3], shift: true, command: false)                            // mouseDown z Shift na 4. elemencie: NIE ma zerować zaznaczenia
+            let afterPressDown = store.selection
+            store.click(vis[3], command: false, shift: true)                                // mouseUp z Shift: dopiero to ustala zakres
+            print("SELF 33 Shift-klik zakresowy: po pressDown zaznaczenie niezmienione=\(afterPressDown == [vis[0].path]) po puszczeniu zaznaczono=\(store.selection.count) (oczekiwano 4)")
+            let allFavBefore = store.selection.allSatisfy { store.org.favorites.contains($0) }
+            _ = controller.debugKey(.digit(5, shift: false))
+            let allFavAfter = store.selection.allSatisfy { store.org.favorites.contains($0) }
+            print("SELF 33b ⌘5 na zaznaczeniu: przed=\(allFavBefore) po=\(allFavAfter) (ma dotyczyć wszystkich \(store.selection.count) plików)")
+            store.toggleFavorite(Array(store.selection))       // sprzątanie po teście
+        }
         store.select(category: .klass(.image)); if let im = store.visible.first { store.click(im, command: false, shift: false) }
         _ = controller.debugKey(.space); let big1 = store.settings.bigMediaPreview
         _ = controller.debugKey(.space); let big2 = store.settings.bigMediaPreview

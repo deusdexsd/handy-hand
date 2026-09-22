@@ -9,7 +9,7 @@ struct DragOverlay: NSViewRepresentable {
     var previewName: () -> String
     var isVideo: Bool
     var passThrough: CGRect = .zero            // obszar (np. gwiazdka), który ma dostać zdarzenia myszy
-    var onDown: () -> Void
+    var onDown: (_ shift: Bool, _ command: Bool) -> Void
     var onPress: (Bool) -> Void
     var onClick: (_ command: Bool, _ shift: Bool) -> Void
     var onDrag: (Bool) -> Void
@@ -46,7 +46,8 @@ struct DragOverlay: NSViewRepresentable {
 
         override func mouseDown(with event: NSEvent) {
             down = event.locationInWindow; pressed = true; dragging = false
-            cfg?.onDown(); cfg?.onPress(true)         // feedback na wciśnięcie, nie na puszczenie
+            let m = event.modifierFlags
+            cfg?.onDown(m.contains(.shift), m.contains(.command)); cfg?.onPress(true)         // feedback na wciśnięcie, nie na puszczenie
         }
 
         override func mouseUp(with event: NSEvent) {
@@ -79,8 +80,9 @@ struct DragOverlay: NSViewRepresentable {
         }
 
         override func rightMouseDown(with event: NSEvent) {
-            cfg?.onDown()
-            if let m = cfg?.menu() { NSMenu.popUpContextMenu(m, with: event, for: self) }
+            let m = event.modifierFlags
+            cfg?.onDown(m.contains(.shift), m.contains(.command))
+            if let menu = cfg?.menu() { NSMenu.popUpContextMenu(menu, with: event, for: self) }
         }
 
         func draggingSession(_ s: NSDraggingSession, sourceOperationMaskFor c: NSDraggingContext) -> NSDragOperation { [.copy, .generic, .link] }

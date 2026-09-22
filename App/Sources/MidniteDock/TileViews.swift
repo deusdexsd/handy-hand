@@ -136,7 +136,7 @@ struct TileView: View {
     private var dragOverlay: some View {
         DragOverlay(paths: { store.dragPaths(for: item) }, previewName: { item.name }, isVideo: item.kind == .video,
                     passThrough: CGRect(x: 4, y: 4, width: 30, height: 30),
-                    onDown: { store.pressDown(item) }, onPress: { pressed = $0 },
+                    onDown: { shift, command in store.pressDown(item, shift: shift, command: command) }, onPress: { pressed = $0 },
                     onClick: { c, s in store.click(item, command: c, shift: s) },
                     onDrag: { store.dragging = $0 }, onHover: { hover = $0 },
                     menu: { ItemMenu.build(store: store, item: item) })
@@ -177,7 +177,7 @@ struct RowView: View {
         .scaleEffect(pressed ? 0.985 : 1)
         .overlay(DragOverlay(paths: { store.dragPaths(for: item) }, previewName: { item.name }, isVideo: item.kind == .video,
                              passThrough: CGRect(x: 0, y: 0, width: Self.rowPadding + 16 + Self.spacing, height: 30),   // gwiazdka: klik ma trafić do SwiftUI, nie do warstwy przeciągania
-                             onDown: { store.pressDown(item) }, onPress: { pressed = $0 },
+                             onDown: { shift, command in store.pressDown(item, shift: shift, command: command) }, onPress: { pressed = $0 },
                              onClick: { c, s in store.click(item, command: c, shift: s) },
                              onDrag: { store.dragging = $0 }, onHover: { _ in },
                              menu: { ItemMenu.build(store: store, item: item) }))

@@ -613,7 +613,7 @@ final class IndexerTests: XCTestCase {
     }
 
     func testNotchEffectHasNoGlowAnymore() throws {
-        XCTAssertEqual(AppSettings().notchEffect, .paw)
+        XCTAssertEqual(AppSettings().notchEffect, .none)      // bazowo bez efektu (David: łapka nie ma rzucać się w oczy domyślnie)
         XCTAssertEqual(NotchEffect.allCases, [.none, .paw])           // podświetlenie zdjęte z listy wyboru
         let legacy = try JSONDecoder().decode(AppSettings.self, from: Data("{\"notchEffect\":\"glow\"}".utf8))
         XCTAssertEqual(legacy.notchEffect, .paw)                      // stare zapisy z "glow" lądują na łapce, nie wywalają ustawień

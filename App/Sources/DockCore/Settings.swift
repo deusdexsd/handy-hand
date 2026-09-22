@@ -79,7 +79,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var bigMediaPreview: Bool = false
     /// Klawisze 1-4: jaki typ pokazują (filtr w bieżącej kategorii).
     public var quickKeys: [MediaClass] = [.sfx, .music, .video, .image]
-    public var notchEffect: NotchEffect = .paw
+    public var notchEffect: NotchEffect = .none     // bazowo bez żadnego efektu (David: łapka ma nie rzucać się w oczy domyślnie)
     public var strictDuplicates: Bool = false
     /// Globalny skrót pokazujący/chowający panel bez najeżdżania kursorem (nil = wyłączony).
     public var toggleHotkey: HotKeySpec? {
