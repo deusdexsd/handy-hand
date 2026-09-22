@@ -65,6 +65,9 @@ struct ToolbarView: View {
             }
             Text(store.categoryTitle).font(.system(size: 13, weight: .semibold)).lineLimit(1).frame(minWidth: 70, alignment: .leading)
             SearchField(text: $store.search, placeholder: L("Szukaj w: \(store.categoryTitle)", "Search in: \(store.categoryTitle)"))
+            iconButton(store.settings.searchMetadata ? "tag.fill" : "tag",
+                       L("Szukaj też w tagach, rozszerzeniu i wydarzeniu FCP (nie tylko w nazwie)", "Also search tags, extension and FCP event (not just the name)"),
+                       active: store.settings.searchMetadata) { store.settings.searchMetadata.toggle() }
             FilterMenu(store: store)
             SortMenu(store: store)
             PresetMenu(store: store)
@@ -168,16 +171,29 @@ struct PresetMenu: View {
     @ObservedObject var store: LibraryStore
     var body: some View {
         Menu {
-            ForEach(store.org.presets) { p in Button(p.name) { store.apply(p) } }
-            if !store.org.presets.isEmpty { Divider() }
-            Button(L("Zapisz bieżący układ…", "Save current layout…")) { store.ask(L("Zapisz układ", "Save layout"), message: L("Kategoria, filtry, sortowanie i widok.", "Category, filters, sorting and view."), placeholder: L("Nazwa układu", "Layout name"), action: L("Zapisz", "Save")) { store.savePreset(name: $0) } }
+            if store.org.presets.isEmpty {
+                Text(L("Bieżący widok jest zapamiętywany sam. Zakładka to dodatkowy, nazwany widok, do którego wracasz jednym kliknięciem.",
+                       "The current view is already remembered on its own. A bookmark is an extra, named view you can jump back to in one click."))
+            } else {
+                ForEach(store.org.presets) { p in Button(p.name) { store.apply(p) } }
+                Divider()
+            }
+            Button(L("Zapisz jako zakładkę…", "Save as bookmark…")) {
+                store.ask(L("Nowa zakładka", "New bookmark"),
+                          message: L("Zapamiętuje kategorię, filtry, sortowanie i widok pod tą nazwą, żebyś mógł tu wrócić jednym kliknięciem. Bieżący widok i tak jest zapamiętywany sam, nawet bez zapisywania.",
+                                     "Remembers the category, filters, sorting and view under this name, so you can jump back with one click. The current view keeps saving itself either way."),
+                          placeholder: L("Nazwa zakładki", "Bookmark name"), action: L("Zapisz", "Save")) { store.savePreset(name: $0) }
+            }
             if !store.org.presets.isEmpty {
-                Menu(L("Usuń układ", "Delete layout")) { ForEach(store.org.presets) { p in Button(p.name, role: .destructive) { store.deletePreset(p.id) } } }
+                Menu(L("Usuń zakładkę", "Delete bookmark")) { ForEach(store.org.presets) { p in Button(p.name, role: .destructive) { store.deletePreset(p.id) } } }
             }
         } label: {
             Image(systemName: "bookmark").font(.system(size: 12)).foregroundStyle(.secondary).frame(width: 26, height: 26)
         }
-        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel(L("Zapisane układy", "Saved layouts"))
+        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+        .accessibilityLabel(L("Zakładki", "Bookmarks"))
+        .help(L("Zakładki: nazwane widoki do jednego kliknięcia. Bieżący widok jest zapamiętywany automatycznie, bez zapisywania.",
+                "Bookmarks: named views, one click away. The current view is remembered automatically, without saving anything."))
     }
 }
 

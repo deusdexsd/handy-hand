@@ -647,4 +647,19 @@ final class IndexerTests: XCTestCase {
         let off = try JSONDecoder().decode(AppSettings.self, from: Data("{\"favoritesFirst\":false}".utf8))
         XCTAssertFalse(off.favoritesFirst)
     }
+
+    func testSearchMetadataMatchesTagExtAndGroup() throws {
+        var org = Organization()
+        let a = item("dramatic_hit", 1, src: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!, group: "Zdarzenie A")
+        let b = item("calm_pad", 1)
+        org.tags[a.path] = ["dramat", "napięcie"]
+        var cfg = ViewConfig(); cfg.category = .all
+        // off: "napięcie" (tag) nie pasuje do żadnej nazwy pliku
+        XCTAssertEqual(LibraryQuery.apply([a, b], config: cfg, search: "napięcie", org: org, searchMetadata: false), [])
+        // on: trafia po tagu
+        XCTAssertEqual(LibraryQuery.apply([a, b], config: cfg, search: "napięcie", org: org, searchMetadata: true).map(\.name), ["dramatic_hit"])
+        // on: trafia po rozszerzeniu i wydarzeniu (grupie)
+        XCTAssertEqual(LibraryQuery.apply([a, b], config: cfg, search: "wav", org: org, searchMetadata: true).count, 2)
+        XCTAssertEqual(LibraryQuery.apply([a, b], config: cfg, search: "zdarzenie a", org: org, searchMetadata: true).map(\.name), ["dramatic_hit"])
+    }
 }

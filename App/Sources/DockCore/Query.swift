@@ -128,11 +128,19 @@ public enum LibraryQuery {
 
     public static func apply(_ items: [MediaItem], config: ViewConfig, search: String, org: Organization,
                              now: Date = Date(), dups: DuplicateIndex = .empty, hideDuplicates: Bool = false,
-                             sourceOrder: [UUID] = [], favoritesFirst: Bool = false) -> [MediaItem] {
+                             sourceOrder: [UUID] = [], favoritesFirst: Bool = false, searchMetadata: Bool = false) -> [MediaItem] {
         let q = search.trimmingCharacters(in: .whitespaces).lowercased()
         let f = config.filters
         var out = items.filter { matches($0, category: config.category, org: org, dups: dups) }
-        if !q.isEmpty { out = out.filter { $0.name.lowercased().contains(q) } }
+        if !q.isEmpty {
+            out = out.filter { i in
+                if i.name.lowercased().contains(q) { return true }
+                guard searchMetadata else { return false }
+                if i.ext.lowercased().contains(q) { return true }
+                if let g = i.group, g.lowercased().contains(q) { return true }
+                return any(i, dups) { org.tags[$0]?.contains { $0.lowercased().contains(q) } ?? false }
+            }
+        }
         if let k = f.kind { out = out.filter { $0.kind == k } }
         if let c = f.klass { out = out.filter { org.mediaClass(of: $0) == c } }
         if let rid = f.durationRangeID, let r = org.durationRanges.first(where: { $0.id == rid }) {

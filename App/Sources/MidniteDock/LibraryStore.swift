@@ -112,7 +112,8 @@ final class LibraryStore: ObservableObject {
         let key = [dataVersion, itemsVersion, search.hashValue]
         if let m = visibleMemo, m.key == key { return m.value }
         let v = LibraryQuery.apply(items, config: config, search: search, org: org, dups: dups,
-                                   hideDuplicates: settings.hideDuplicates, sourceOrder: sourceOrder, favoritesFirst: settings.favoritesFirst)
+                                   hideDuplicates: settings.hideDuplicates, sourceOrder: sourceOrder, favoritesFirst: settings.favoritesFirst,
+                                   searchMetadata: settings.searchMetadata)
         visibleMemo = (key, v)
         return v
     }

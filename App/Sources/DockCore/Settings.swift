@@ -119,9 +119,11 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var language: AppLanguage = .pl
     /// Ulubione zawsze na górze listy, niezależnie od sortowania i kategorii.
     public var favoritesFirst: Bool = true
+    /// Szukanie sprawdza też tagi, rozszerzenie pliku i wydarzenie FCP (nie tylko nazwę).
+    public var searchMetadata: Bool = false
     public init() {}
 
-    enum CodingKeys: String, CodingKey { case glowHex, glowIntensity, hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, sidePosition, autoplayOnSelect, waveformAutoScale, bigMediaPreview, quickKeys, notchGlow, notchEffect, glowColor, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
+    enum CodingKeys: String, CodingKey { case glowHex, glowIntensity, hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, waveformAutoScale, bigMediaPreview, quickKeys, notchGlow, notchEffect, glowColor, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
     /// Tolerancyjne dekodowanie: brakujący klucz (np. po aktualizacji) = wartość domyślna, a nie utrata ustawień.
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -156,6 +158,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         finderKey = [7, 8, 9, 0, -1].contains(fk) ? fk : def.finderKey
         language = try c.decodeIfPresent(AppLanguage.self, forKey: .language) ?? def.language
         favoritesFirst = try c.decodeIfPresent(Bool.self, forKey: .favoritesFirst) ?? def.favoritesFirst
+        searchMetadata = try c.decodeIfPresent(Bool.self, forKey: .searchMetadata) ?? def.searchMetadata
     }
 }
 
