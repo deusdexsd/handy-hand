@@ -78,13 +78,18 @@ struct HandleView: View {
                 // Prawdziwy notch: w spoczynku nic. Poświata ma wylewać się spod dolnej krawędzi notcha, nie promieniować
                 // równo we wszystkie strony (dlatego osobny gradient „od spodu”, a nie symetryczny .shadow wokół kształtu).
                 ZStack(alignment: .top) {
-                    RadialGradient(colors: [glowColor.opacity(min(1, 0.8 * glow * k)), .clear], center: .top, startRadius: 0, endRadius: 90)
-                        .frame(width: anchorSize.width + 60, height: 140)
+                    // Mocniej i szerzej niż na wysepce: na wbudowanym notchu pasek menu jest wąski, a otoczenie jasne —
+                    // za słaba poświata ginie. Dwie warstwy: mocny, ciasny rdzeń tuż pod notchem + szerszy, delikatniejszy poblask.
+                    RadialGradient(colors: [glowColor.opacity(min(1, 0.5 * glow * k)), .clear], center: .top, startRadius: 0, endRadius: 170)
+                        .frame(width: anchorSize.width + 160, height: 210)
                         .offset(y: anchorSize.height - 2)
-                        .allowsHitTesting(false)
+                    RadialGradient(colors: [glowColor.opacity(min(1, 1.0 * glow * k)), .clear], center: .top, startRadius: 0, endRadius: 80)
+                        .frame(width: anchorSize.width + 60, height: 130)
+                        .offset(y: anchorSize.height - 2)
                     UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10, style: .continuous)
                         .fill(Color.black).frame(width: anchorSize.width - 2, height: anchorSize.height)
                 }
+                .allowsHitTesting(false)
                 .animation(.easeOut(duration: 0.18), value: glow)
             } else if showsCap {
                 let shape = UnevenRoundedRectangle(topLeadingRadius: side == 1 ? 12 : 0, bottomLeadingRadius: side == 1 || side == 0 ? 12 : 0,
@@ -171,7 +176,7 @@ final class PanelController: NSObject {
         let hx = max(m.frame.minX, min(l.horizontalAnchor - hw / 2, m.frame.maxX - hw))
         if realNotchStyle, let n = NotchGeometry.notchRect(m) {
             bodyFrame.origin.y = n.minY - bodySize.height                          // panel wisi tuż pod notchem
-            return (NotchGeometry.windowAround(n, side: 90, below: 150, screen: m.frame), bodyFrame, false, false, n, true)
+            return (NotchGeometry.windowAround(n, side: 90, below: 220, screen: m.frame), bodyFrame, false, false, n, true)   // 220: miejsce na mocniejszą poświatę
         }
         let anchor: CGRect
         if l.showsCap { anchor = CGRect(x: hx, y: m.frame.maxY - hh, width: hw, height: hh); bodyFrame.origin.y = anchor.minY - 6 - bodySize.height }
@@ -312,7 +317,12 @@ final class PanelController: NSObject {
         let dx = max(h.minX - p.x, 0, p.x - h.maxX), dy = max(h.minY - p.y, 0, p.y - h.maxY)
         let g = NotchGlow.intensity(distance: hypot(dx, dy), radius: effect == .paw ? 105 : 140)
         switch effect {
-        case .glow: if abs(g - state.glow) > 0.02 { state.glow = g }
+        case .glow:
+            // Zamiast płynnie śledzić dystans (łatwo przeoczyć, zwłaszcza na wbudowanym notchu): jak kursor wejdzie w zasięg,
+            // podświetlenie dochodzi do pełnej jasności i tam ZOSTAJE, dopóki kursor naprawdę nie odjedzie (histereza).
+            let engaged = state.glow > 0.5 ? g > 0.02 : g > 0.12
+            let target: Double = engaged ? 1 : 0
+            if state.glow != target { state.glow = target }
         case .paw:
             if g <= 0.02 {      // poza zasięgiem: chowamy dopiero po chwili (histereza, żeby nie migało na granicy)
                 if state.tipY > -30, retractWork == nil {
@@ -680,6 +690,19 @@ enum SelfTest {
             SnapshotRunner.save(controller.handleSnapshot(), "/tmp/lapka-live-handle.png")
             controller.debugMouse = CGPoint(x: gr.midX + 900, y: gr.minY - 900); controller.debugUpdateEffect(); await wait(2.0)
             print("SELF 31b po odjechaniu: cel Y=\(Int(controller.state.tipY)) aktywna=\(controller.state.armActive)")
+            controller.debugMouse = nil
+        }
+        // Podświetlenie: raz w zasięgu ma dojść do pełnej jasności i tam ZOSTAĆ (histereza), nie śledzić dystans na bieżąco.
+        store.settings.notchEffect = .glow; await wait(0.3)
+        if let gr = controller.debugGlowRect() {
+            controller.debugMouse = CGPoint(x: gr.midX + 900, y: gr.minY - 900); controller.debugUpdateEffect()
+            print("SELF 31c daleko: glow=\(controller.state.glow)")
+            controller.debugMouse = CGPoint(x: gr.midX + 50, y: gr.minY - 30); controller.debugUpdateEffect()      // blisko: g≈0.62, przekracza próg włączenia (0.12)
+            print("SELF 31d blisko: glow=\(controller.state.glow)")
+            controller.debugMouse = CGPoint(x: gr.midX + 110, y: gr.minY - 50); controller.debugUpdateEffect()     // dalej, g≈0.05 — za słabo, by SAMO zapalić, ale wystarczy, by zostać zapalone
+            print("SELF 31e dalej w promieniu: glow zostaje pełne=\(controller.state.glow == 1)")
+            controller.debugMouse = CGPoint(x: gr.midX + 900, y: gr.minY - 900); controller.debugUpdateEffect()    // naprawdę daleko: gaśnie
+            print("SELF 31f po odjechaniu: glow=\(controller.state.glow)")
             controller.debugMouse = nil
         }
         // Wyszukiwarka: prawdziwe pisanie (bez ⌘) trafia do pola, ⌘+cyfra to skrót, Esc wychodzi z pola.
