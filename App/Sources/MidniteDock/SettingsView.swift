@@ -55,7 +55,6 @@ struct GeneralTab: View {
                 }
                 Toggle(L("Odtwarzaj po kliknięciu kafla", "Play on tile click"), isOn: $store.data.settings.autoplayOnSelect)
                 Toggle(L("Większy podgląd obrazów i wideo na dole panelu", "Bigger image/video preview at the bottom of the panel"), isOn: $store.data.settings.bigMediaPreview)
-                Toggle(L("Ulubione zawsze na górze listy", "Favorites always at the top of the list"), isOn: $store.data.settings.favoritesFirst)
             }
             Section("Notch") {
                 Picker(L("Położenie", "Position"), selection: $store.data.settings.placement) { ForEach(NotchPlacement.allCases, id: \.self) { Text($0.label).tag($0) } }
@@ -96,7 +95,8 @@ struct SourcesTab: View {
                 }
             }
             Section(L("Duplikaty", "Duplicates")) {
-                Toggle(L("Zwijaj duplikaty (jedna pozycja zamiast kilku)", "Collapse duplicates (one entry instead of several)"), isOn: $store.data.settings.hideDuplicates)
+                Toggle(L("Pokaż duplikaty osobno", "Show duplicates separately"), isOn: Binding(
+                    get: { !store.settings.hideDuplicates }, set: { store.data.settings.hideDuplicates = !$0 }))
                 if store.settings.hideDuplicates {
                     Toggle(L("Tryb ścisły: doliczaj rozmiar pliku", "Strict mode: also match file size"), isOn: $store.data.settings.strictDuplicates)
                     Text(L("Duplikat to ten sam typ, ta sama nazwa (bez rozszerzenia) i ta sama długość. Zostaje kopia ze źródła wyżej na liście. Ulubione, tagi i kolekcje dotyczą wszystkich kopii, a w folderze źródła dalej widać jego własną kopię. Aktualnie zwiniętych: \(store.hiddenDuplicateCount).",

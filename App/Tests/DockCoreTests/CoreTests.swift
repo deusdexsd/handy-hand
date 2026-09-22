@@ -641,11 +641,11 @@ final class IndexerTests: XCTestCase {
 
     func testLanguageAndFavoritesFirstDefaultsAndDecode() throws {
         XCTAssertEqual(AppSettings().language, .pl)
-        XCTAssertTrue(AppSettings().favoritesFirst)
+        XCTAssertFalse(AppSettings().favoritesFirst)      // domyślnie wyłączone: gwiazdka w toolbarze włącza to świadomie
         let en = try JSONDecoder().decode(AppSettings.self, from: Data("{\"language\":\"en\"}".utf8))
         XCTAssertEqual(en.language, .en)
-        let off = try JSONDecoder().decode(AppSettings.self, from: Data("{\"favoritesFirst\":false}".utf8))
-        XCTAssertFalse(off.favoritesFirst)
+        let on = try JSONDecoder().decode(AppSettings.self, from: Data("{\"favoritesFirst\":true}".utf8))
+        XCTAssertTrue(on.favoritesFirst)
     }
 
     func testSearchMetadataMatchesTagExtAndGroup() throws {

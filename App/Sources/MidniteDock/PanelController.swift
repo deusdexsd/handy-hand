@@ -89,8 +89,6 @@ struct HandleView: View {
                     shape.fill(Color.black)
                     RadialGradient(colors: [glowColor.opacity(min(1, 0.55 * glow * k)), .clear], center: side == -1 ? .leading : (side == 1 ? .trailing : .bottom), startRadius: 0, endRadius: 110).clipShape(shape)
                     shape.strokeBorder(glowColor.opacity(min(1, 0.8 * glow * k)), lineWidth: 1)
-                    Image(systemName: "pawprint.fill").font(.system(size: 11))
-                        .foregroundStyle(Color.white.opacity(expanded || isPlaying ? 0.55 : 0.22 + 0.5 * glow))
                 }
                 .frame(width: anchorSize.width, height: anchorSize.height)
                 .animation(.easeOut(duration: 0.16), value: glow)
@@ -230,6 +228,7 @@ final class PanelController: NSObject {
             hideWork?.cancel()
             if want {
                 body.makeKeyAndOrderFront(nil)     // .nonactivatingPanel: staje się klawiszowy BEZ aktywowania innej apki (np. FCP)
+                body.makeFirstResponder(body.contentView)   // ale BEZ automatycznego focusu w polu wyszukiwania — inaczej strzałki/spacja przestają działać od razu
                 state.expanded = true
             } else {
                 state.expanded = false
@@ -699,6 +698,15 @@ enum SelfTest {
                 store.config.filters = .none
                 panel.sendEvent(key(19, "2", cmd: true)); await wait(0.2)     // ⌘2 poza polem = skrót (filtr typu)
                 print("SELF 32c po Esc ⌘2 działa jako skrót: filtr=\(String(describing: store.config.filters.klass))"); store.config.filters = .none
+
+                // Strzałki BEZPOŚREDNIO przez sendEvent (nie debugKey), zaraz po świeżym rozwinięciu panelu — dokładnie ta ścieżka, którą klika prawdziwa klawiatura.
+                controller.debugSetHovering(false); await wait(0.4)
+                controller.debugSetHovering(true); await wait(0.4)
+                let beforePrimary = store.primary?.path
+                panel.sendEvent(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: panel.windowNumber,
+                                                  context: nil, characters: "", charactersIgnoringModifiers: "", isARepeat: false, keyCode: 125)!)   // strzałka w dół
+                await wait(0.2)
+                print("SELF 32d strzałka w dół zaraz po rozwinięciu (bez klikania w pole): zmieniło zaznaczenie=\(store.primary?.path != beforePrimary)")
             } else { print("SELF 32 brak pola wyszukiwania w panelu") }
         }
         // Zapis na dysk

@@ -117,8 +117,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var finderKey: Int = 9
     /// Język interfejsu.
     public var language: AppLanguage = .pl
-    /// Ulubione zawsze na górze listy, niezależnie od sortowania i kategorii.
-    public var favoritesFirst: Bool = true
+    /// Ulubione zawsze na górze listy, niezależnie od sortowania i kategorii (gwiazdka w toolbarze).
+    public var favoritesFirst: Bool = false
     /// Szukanie sprawdza też tagi, rozszerzenie pliku i wydarzenie FCP (nie tylko nazwę).
     public var searchMetadata: Bool = false
     public init() {}

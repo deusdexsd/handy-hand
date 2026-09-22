@@ -70,6 +70,9 @@ struct ToolbarView: View {
                        active: store.settings.searchMetadata) { store.settings.searchMetadata.toggle() }
             FilterMenu(store: store)
             SortMenu(store: store)
+            iconButton(store.settings.favoritesFirst ? "star.fill" : "star",
+                       L("Ulubione zawsze na górze listy", "Favorites always on top"),
+                       active: store.settings.favoritesFirst) { store.settings.favoritesFirst.toggle() }
             PresetMenu(store: store)
             iconButton(store.config.viewMode == .grid ? "square.grid.2x2" : "list.bullet", L("Przełącz siatkę i listę", "Toggle grid and list")) {
                 store.config.viewMode = store.config.viewMode == .grid ? .list : .grid
