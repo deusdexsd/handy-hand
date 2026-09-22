@@ -172,16 +172,16 @@ struct PresetMenu: View {
     var body: some View {
         Menu {
             if store.org.presets.isEmpty {
-                Text(L("Bieżący widok jest zapamiętywany sam. Zakładka to dodatkowy, nazwany widok, do którego wracasz jednym kliknięciem.",
-                       "The current view is already remembered on its own. A bookmark is an extra, named view you can jump back to in one click."))
+                Text(L("Zakładka to nazwany widok — kategoria, filtry, sortowanie i siatka/lista — do którego wracasz jednym kliknięciem.",
+                       "A bookmark is a named view — category, filters, sorting and grid/list — you can jump back to in one click."))
             } else {
                 ForEach(store.org.presets) { p in Button(p.name) { store.apply(p) } }
                 Divider()
             }
             Button(L("Zapisz jako zakładkę…", "Save as bookmark…")) {
                 store.ask(L("Nowa zakładka", "New bookmark"),
-                          message: L("Zapamiętuje kategorię, filtry, sortowanie i widok pod tą nazwą, żebyś mógł tu wrócić jednym kliknięciem. Bieżący widok i tak jest zapamiętywany sam, nawet bez zapisywania.",
-                                     "Remembers the category, filters, sorting and view under this name, so you can jump back with one click. The current view keeps saving itself either way."),
+                          message: L("Zapamiętuje kategorię, filtry, sortowanie i widok pod tą nazwą, żebyś mógł tu wrócić jednym kliknięciem.",
+                                     "Remembers the category, filters, sorting and view under this name, so you can jump back with one click."),
                           placeholder: L("Nazwa zakładki", "Bookmark name"), action: L("Zapisz", "Save")) { store.savePreset(name: $0) }
             }
             if !store.org.presets.isEmpty {
@@ -192,8 +192,7 @@ struct PresetMenu: View {
         }
         .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
         .accessibilityLabel(L("Zakładki", "Bookmarks"))
-        .help(L("Zakładki: nazwane widoki do jednego kliknięcia. Bieżący widok jest zapamiętywany automatycznie, bez zapisywania.",
-                "Bookmarks: named views, one click away. The current view is remembered automatically, without saving anything."))
+        .help(L("Zakładki: nazwane widoki do jednego kliknięcia.", "Bookmarks: named views, one click away."))
     }
 }
 
