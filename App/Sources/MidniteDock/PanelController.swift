@@ -63,59 +63,21 @@ struct HandleView: View {
     let expanded: Bool
     let isPlaying: Bool
     @ObservedObject var state: PanelState
-    let glowColor: Color
     var realNotch = false
     var anchorSize = CGSize(width: 200, height: 32)      // rozmiar notcha / wysepki w środku przezroczystego okna
     var side = 0                                         // -1 lewa krawędź, 1 prawa, 0 góra
-    var effect: NotchEffect = .glow
+    var effect: NotchEffect = .paw
 
     var body: some View {
-        let glow = expanded || effect != .glow ? 0 : state.glow
-        let glowColor = state.glowTint ?? self.glowColor
-        let k = state.glowIntensity                 // siła podświetlenia z Ustawień
         ZStack(alignment: .top) {
             if realNotch {
-                // Prawdziwy notch: w spoczynku nic. Poświata ma wylewać się spod dolnej krawędzi notcha, nie promieniować
-                // równo we wszystkie strony (dlatego osobny gradient „od spodu”, a nie symetryczny .shadow wokół kształtu).
-                ZStack(alignment: .top) {
-                    // Mocniej i szerzej niż na wysepce: na wbudowanym notchu pasek menu jest wąski, a otoczenie jasne —
-                    // za słaba poświata ginie. Dwie warstwy: mocny, ciasny rdzeń tuż pod notchem + szerszy, delikatniejszy poblask.
-                    RadialGradient(colors: [glowColor.opacity(min(1, 0.5 * glow * k)), .clear], center: .top, startRadius: 0, endRadius: 170)
-                        .frame(width: anchorSize.width + 160, height: 210)
-                        .offset(y: anchorSize.height - 2)
-                    RadialGradient(colors: [glowColor.opacity(min(1, 1.0 * glow * k)), .clear], center: .top, startRadius: 0, endRadius: 80)
-                        .frame(width: anchorSize.width + 60, height: 130)
-                        .offset(y: anchorSize.height - 2)
-                    UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10, style: .continuous)
-                        .fill(Color.black).frame(width: anchorSize.width - 2, height: anchorSize.height)
-                }
-                .allowsHitTesting(false)
-                .animation(.easeOut(duration: 0.18), value: glow)
+                // Prawdziwy notch: sam czarny kształt (nad fizycznym notchem nie ma pikseli, więc jest niewidoczny).
+                UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10, style: .continuous)
+                    .fill(Color.black).frame(width: anchorSize.width - 2, height: anchorSize.height)
             } else if showsCap {
-                let shape = UnevenRoundedRectangle(topLeadingRadius: side == 1 ? 12 : 0, bottomLeadingRadius: side == 1 || side == 0 ? 12 : 0,
-                                                   bottomTrailingRadius: side == -1 || side == 0 ? 12 : 0, topTrailingRadius: side == -1 ? 12 : 0, style: .continuous)
-                // Poświata NA ZEWNĄTRZ pigułki (tak jak przy prawdziwym notchu), nie w środku — wcześniej była przycięta
-                // do kształtu (.clipShape), więc świeciła jak lampka wewnątrz czarnej wysepki zamiast wylewać się spod niej.
-                ZStack(alignment: .top) {
-                    if side == 0 {
-                        RadialGradient(colors: [glowColor.opacity(min(1, 0.5 * glow * k)), .clear], center: .top, startRadius: 0, endRadius: 150)
-                            .frame(width: anchorSize.width + 140, height: 190)
-                            .offset(y: anchorSize.height - 4)
-                        RadialGradient(colors: [glowColor.opacity(min(1, 1.0 * glow * k)), .clear], center: .top, startRadius: 0, endRadius: 70)
-                            .frame(width: anchorSize.width + 50, height: 110)
-                            .offset(y: anchorSize.height - 4)
-                    }
-                    ZStack {
-                        shape.fill(Color.black)
-                        if side != 0 {      // boczne krawędzie: bez zmian, poświata zostaje wewnątrz pigułki
-                            RadialGradient(colors: [glowColor.opacity(min(1, 0.55 * glow * k)), .clear], center: side == -1 ? .leading : .trailing, startRadius: 0, endRadius: 110).clipShape(shape)
-                        }
-                        shape.strokeBorder(glowColor.opacity(min(1, 0.8 * glow * k)), lineWidth: 1)
-                    }
-                    .frame(width: anchorSize.width, height: anchorSize.height)
-                }
-                .allowsHitTesting(false)
-                .animation(.easeOut(duration: 0.16), value: glow)
+                UnevenRoundedRectangle(topLeadingRadius: side == 1 ? 12 : 0, bottomLeadingRadius: side == 1 || side == 0 ? 12 : 0,
+                                       bottomTrailingRadius: side == -1 || side == 0 ? 12 : 0, topTrailingRadius: side == -1 ? 12 : 0, style: .continuous)
+                    .fill(Color.black).frame(width: anchorSize.width, height: anchorSize.height)
             } else {
                 Capsule().fill(Color.white.opacity(expanded ? 0 : 0.55)).frame(height: 4).padding(.horizontal, 20)
             }
@@ -201,18 +163,17 @@ final class PanelController: NSObject {
         return (win, bodyFrame, l.showsCap, false, anchor, false)
     }
 
-    /// Na bocznych krawędziach łapka nie działa (tylko poświata).
+    /// Na bocznych krawędziach łapka nie działa (nie ma tam już czym jej zastąpić — podświetlenie zdjęte).
     private var activeEffect: NotchEffect {
         let e = store.settings.notchEffect
-        return store.settings.placement.isSide && e == .paw ? .glow : e
+        return store.settings.placement.isSide && e == .paw ? .none : e
     }
 
     private func rebuildHandle() {
         guard let f = frames() else { return }
-        handle.contentView = NSHostingView(rootView: HandleView(showsCap: f.cap, atBottom: f.bottom, expanded: expanded, isPlaying: store.previewer.isPlaying, state: state, glowColor: Self.glowColor(store.settings.glowColor), realNotch: f.realNotch, anchorSize: f.glowRect.size, side: store.settings.placement == .leftMiddle ? -1 : (store.settings.placement == .rightMiddle ? 1 : 0), effect: activeEffect))
+        handle.contentView = NSHostingView(rootView: HandleView(showsCap: f.cap, atBottom: f.bottom, expanded: expanded, isPlaying: store.previewer.isPlaying, state: state, realNotch: f.realNotch, anchorSize: f.glowRect.size, side: store.settings.placement == .leftMiddle ? -1 : (store.settings.placement == .rightMiddle ? 1 : 0), effect: activeEffect))
         handle.setFrame(f.handle, display: true)
         state.atBottom = f.bottom
-        state.glowTint = Self.glowTint(store.settings); state.glowIntensity = store.settings.glowIntensity
     }
 
     func show() { handle.orderFrontRegardless(); apply(animated: false) }
@@ -233,9 +194,6 @@ final class PanelController: NSObject {
     private var handleKey = ""
     private func settingsChanged() {
         let s = store.settings
-        let tint = Self.glowTint(s)
-        if state.glowTint != tint { state.glowTint = tint }
-        if state.glowIntensity != s.glowIntensity { state.glowIntensity = s.glowIntensity }
         let key = "\(s.placement.rawValue)|\(s.virtualNotch.rawValue)|\(s.notchEffect.rawValue)"
         if key != handleKey { handleKey = key; rebuildHandle() }      // rozmiar panelu zmienia się w trakcie rozciągania: uchwytu nie przebudowujemy
         apply(animated: false)
@@ -305,16 +263,6 @@ final class PanelController: NSObject {
         else { hovering = false; pinnedOnce = false; apply(animated: true) }
     }
 
-    /// Kolor podświetlenia z ustawień (#RRGGBB z kółka kolorów).
-    static func glowTint(_ s: AppSettings) -> Color {
-        let c = HexColor.parse(s.glowHex) ?? HexColor.parse(GlowChoice.violet.hex)!
-        return Color(.sRGB, red: c.r, green: c.g, blue: c.b, opacity: 1)
-    }
-
-    static func glowColor(_ g: GlowChoice) -> Color {
-        switch g { case .violet: Color(red: 0.72, green: 0.48, blue: 1.0); case .teal: Color(red: 0.36, green: 0.88, blue: 0.82); case .blue: Color(red: 0.36, green: 0.55, blue: 1.0) }
-    }
-
     var debugMouse: CGPoint?
     func debugUpdateEffect() { updateGlow() }
     func debugGlowRect() -> CGRect? { frames()?.glowRect }
@@ -323,42 +271,32 @@ final class PanelController: NSObject {
         v.cacheDisplay(in: v.bounds, to: rep); let img = NSImage(size: v.bounds.size); img.addRepresentation(rep); return img
     }
 
-    /// Efekt przy notchu: poświata albo łapka reagują na odległość kursora (duże pole: ok. 140 pt od notcha).
+    /// Efekt przy notchu: łapka reaguje na odległość kursora (pole ok. 105 pt od notcha).
     private func updateGlow() {
         let effect = activeEffect
-        guard effect != .none, !expanded, let f = frames() else { resetEffect(); return }
+        guard effect == .paw, !expanded, let f = frames() else { resetEffect(); return }
         let h = f.glowRect
         let p = debugMouse ?? NSEvent.mouseLocation
         let dx = max(h.minX - p.x, 0, p.x - h.maxX), dy = max(h.minY - p.y, 0, p.y - h.maxY)
-        let g = NotchGlow.intensity(distance: hypot(dx, dy), radius: effect == .paw ? 105 : 140)
-        switch effect {
-        case .glow:
-            // Zamiast płynnie śledzić dystans (łatwo przeoczyć, zwłaszcza na wbudowanym notchu): jak kursor wejdzie w zasięg,
-            // podświetlenie dochodzi do pełnej jasności i tam ZOSTAJE, dopóki kursor naprawdę nie odjedzie (histereza).
-            let engaged = state.glow > 0.5 ? g > 0.02 : g > 0.12
-            let target: Double = engaged ? 1 : 0
-            if state.glow != target { state.glow = target }
-        case .paw:
-            if g <= 0.02 {      // poza zasięgiem: chowamy dopiero po chwili (histereza, żeby nie migało na granicy)
-                if state.tipY > -30, retractWork == nil {
-                    let w = DispatchWorkItem { [weak self] in self?.retractWork = nil; self?.retractArm() }
-                    retractWork = w; DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: w)
-                }
-                return
+        let g = NotchGlow.intensity(distance: hypot(dx, dy), radius: 105)
+        if g <= 0.02 {      // poza zasięgiem: chowamy dopiero po chwili (histereza, żeby nie migało na granicy)
+            if state.tipY > -30, retractWork == nil {
+                let w = DispatchWorkItem { [weak self] in self?.retractWork = nil; self?.retractArm() }
+                retractWork = w; DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: w)
             }
-            guard g > 0.05 || state.armActive else { return }
-            retractWork?.cancel(); retractWork = nil
-            // bark jeździ po notchu za kursorem (skrajny kursor = ramię wychodzi przy samej krawędzi notcha), dłoń celuje w kursor
-            let sc = h.width / 220, maxOff = h.width / 2 - 30 * sc
-            let wantX = max(-maxOff, min(maxOff, (p.x - h.midX) * 0.85))
-            if !state.armActive || abs(wantX - state.shoulderX) > 34 * sc { state.shoulderX = wantX }      // bark „przeskakuje” krokami, nie płynie
-            if !state.sim.wants { state.sim.patStart = Date().timeIntervalSinceReferenceDate }
-            let vx = p.x - (h.midX + state.shoulderX), vy = max(14, h.minY - p.y)
-            let dist = hypot(vx, vy), reach = min(h.width * 0.42, max(h.width * 0.16, dist * 0.7)) * (0.55 + 0.45 * g)
-            state.armActive = true; state.sim.wants = true
-            state.tipX = vx / dist * reach; state.tipY = vy / dist * reach
-        case .none: break
+            return
         }
+        guard g > 0.05 || state.armActive else { return }
+        retractWork?.cancel(); retractWork = nil
+        // bark jeździ po notchu za kursorem (skrajny kursor = ramię wychodzi przy samej krawędzi notcha), dłoń celuje w kursor
+        let sc = h.width / 220, maxOff = h.width / 2 - 30 * sc
+        let wantX = max(-maxOff, min(maxOff, (p.x - h.midX) * 0.85))
+        if !state.armActive || abs(wantX - state.shoulderX) > 34 * sc { state.shoulderX = wantX }      // bark „przeskakuje” krokami, nie płynie
+        if !state.sim.wants { state.sim.patStart = Date().timeIntervalSinceReferenceDate }
+        let vx = p.x - (h.midX + state.shoulderX), vy = max(14, h.minY - p.y)
+        let dist = hypot(vx, vy), reach = min(h.width * 0.42, max(h.width * 0.16, dist * 0.7)) * (0.55 + 0.45 * g)
+        state.armActive = true; state.sim.wants = true
+        state.tipX = vx / dist * reach; state.tipY = vy / dist * reach
     }
 
     private func retractArm() {
@@ -370,7 +308,6 @@ final class PanelController: NSObject {
     }
 
     private func resetEffect() {
-        if state.glow != 0 { state.glow = 0 }
         if state.tipY > -30 { retractArm() }
     }
 
@@ -494,7 +431,7 @@ enum SnapshotRunner {
         }
         // Uchwyt (wirtualny notch) i ustawienia
         do {
-            let hv = NSHostingView(rootView: HandleView(showsCap: true, atBottom: false, expanded: false, isPlaying: false, state: { let st = PanelState(); st.glow = 0.9; return st }(), glowColor: PanelController.glowColor(.violet), anchorSize: CGSize(width: 200, height: 32))
+            let hv = NSHostingView(rootView: HandleView(showsCap: true, atBottom: false, expanded: false, isPlaying: false, state: PanelState(), anchorSize: CGSize(width: 200, height: 32))
                 .frame(width: 420, height: 220).background(Color(white: 0.55)))
             hv.frame = NSRect(x: 0, y: 0, width: 420, height: 220)
             let rep = hv.bitmapImageRepForCachingDisplay(in: hv.bounds)!; hv.cacheDisplay(in: hv.bounds, to: rep)
@@ -512,18 +449,14 @@ enum SnapshotRunner {
             rep.draw(in: NSRect(origin: .zero, size: hv.bounds.size)); img.unlockFocus()
             save(img, "\(dir)/\(name).png"); w.orderOut(nil)
         }
-        await viewShot("09b-handle-real-notch", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: { let st = PanelState(); st.glow = 0.9; return st }(), glowColor: PanelController.glowColor(.violet), realNotch: true, anchorSize: CGSize(width: 220, height: 38)).frame(width: 252, height: 54).background(Color(white: 0.55)), 252, 54)
-        for (name, k) in [("glow-weak", 0.4), ("glow-normal", 1.0), ("glow-strong", 2.0)] {
-            let st = PanelState(); st.glow = 0.9; st.glowIntensity = k; st.glowTint = Color(.sRGB, red: 1, green: 0.53, blue: 0, opacity: 1)
-            await viewShot("09d-\(name)", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: st, glowColor: .white, realNotch: true, anchorSize: CGSize(width: 220, height: 38)).frame(width: 400, height: 150).background(Color(white: 0.2)), 400, 150)
-        }
+        await viewShot("09b-handle-real-notch", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: PanelState(), realNotch: true, anchorSize: CGSize(width: 220, height: 38)).frame(width: 252, height: 54).background(Color(white: 0.55)), 252, 54)
         for (name, tx, ty, sh, jump) in [("paw-settled", 30.0, 80.0, 4.0, false), ("paw-swing", 55.0, 62.0, 8.0, true), ("paw-left", -60.0, 60.0, -8.0, false), ("paw-right-edge", 45.0, 50.0, 80.0, false), ("paw-left-edge", -45.0, 50.0, -80.0, false)] {
             let st = PanelState(); st.armActive = true; st.tipX = tx; st.tipY = ty; st.shoulderX = sh
             let shoulder = CGPoint(x: 200 + sh, y: 38 - 6)   // okno 400 pt, notch 220x38
             st.sim.spring = TipSpring(pos: CGPoint(x: shoulder.x + (jump ? 0 : tx), y: shoulder.y + (jump ? 80 : ty)))
             if jump { for _ in 0..<7 { st.sim.spring.step(dt: 1.0 / 60, target: CGPoint(x: shoulder.x + tx, y: shoulder.y + ty)) } }    // poza „w locie”
             st.sim.wants = true; st.sim.extend = 1; st.sim.patting = false; st.sim.shoulderX = CGFloat(sh); st.sim.last = Date().addingTimeInterval(0.0001)
-            await viewShot("09c-\(name)", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: st, glowColor: PanelController.glowColor(.violet), realNotch: true, anchorSize: CGSize(width: 220, height: 38), effect: .paw).frame(width: 400, height: 188).background(Color(white: 0.62)), 400, 188)
+            await viewShot("09c-\(name)", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: st, realNotch: true, anchorSize: CGSize(width: 220, height: 38), effect: .paw).frame(width: 400, height: 188).background(Color(white: 0.62)), 400, 188)
         }
         await settingsShot("10-set-general", GeneralTab(store: store))
         await settingsShot("11-set-sources", SourcesTab(store: store))
@@ -706,19 +639,6 @@ enum SelfTest {
             SnapshotRunner.save(controller.handleSnapshot(), "/tmp/lapka-live-handle.png")
             controller.debugMouse = CGPoint(x: gr.midX + 900, y: gr.minY - 900); controller.debugUpdateEffect(); await wait(2.0)
             print("SELF 31b po odjechaniu: cel Y=\(Int(controller.state.tipY)) aktywna=\(controller.state.armActive)")
-            controller.debugMouse = nil
-        }
-        // Podświetlenie: raz w zasięgu ma dojść do pełnej jasności i tam ZOSTAĆ (histereza), nie śledzić dystans na bieżąco.
-        store.settings.notchEffect = .glow; await wait(0.3)
-        if let gr = controller.debugGlowRect() {
-            controller.debugMouse = CGPoint(x: gr.midX + 900, y: gr.minY - 900); controller.debugUpdateEffect()
-            print("SELF 31c daleko: glow=\(controller.state.glow)")
-            controller.debugMouse = CGPoint(x: gr.midX + 50, y: gr.minY - 30); controller.debugUpdateEffect()      // blisko: g≈0.62, przekracza próg włączenia (0.12)
-            print("SELF 31d blisko: glow=\(controller.state.glow)")
-            controller.debugMouse = CGPoint(x: gr.midX + 110, y: gr.minY - 50); controller.debugUpdateEffect()     // dalej, g≈0.05 — za słabo, by SAMO zapalić, ale wystarczy, by zostać zapalone
-            print("SELF 31e dalej w promieniu: glow zostaje pełne=\(controller.state.glow == 1)")
-            controller.debugMouse = CGPoint(x: gr.midX + 900, y: gr.minY - 900); controller.debugUpdateEffect()    // naprawdę daleko: gaśnie
-            print("SELF 31f po odjechaniu: glow=\(controller.state.glow)")
             controller.debugMouse = nil
         }
         // Wyszukiwarka: prawdziwe pisanie (bez ⌘) trafia do pola, ⌘+cyfra to skrót, Esc wychodzi z pola.

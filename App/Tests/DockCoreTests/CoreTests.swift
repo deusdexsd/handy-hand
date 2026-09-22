@@ -612,17 +612,13 @@ final class IndexerTests: XCTestCase {
         XCTAssertEqual(bad.finderKey, 9)                    // 3 zajęte przez filtr typu: wraca domyślny
     }
 
-    func testGlowColorAndIntensityMigration() throws {
-        XCTAssertEqual(AppSettings().glowHex, "B87AFF")
-        let teal = try JSONDecoder().decode(AppSettings.self, from: Data("{\"glowColor\":\"teal\"}".utf8))
-        XCTAssertEqual(teal.glowHex, "5CE0D1")                        // stary wybór przechodzi na kolor
-        let custom = try JSONDecoder().decode(AppSettings.self, from: Data("{\"glowHex\":\"FF8800\",\"glowIntensity\":9}".utf8))
-        XCTAssertEqual(custom.glowHex, "FF8800"); XCTAssertEqual(custom.glowIntensity, 2)
-        let bad = try JSONDecoder().decode(AppSettings.self, from: Data("{\"glowHex\":\"zzz\",\"glowIntensity\":0}".utf8))
-        XCTAssertEqual(bad.glowHex, "B87AFF"); XCTAssertEqual(bad.glowIntensity, 0.3)
-        let c = HexColor.parse("#ff8800")!
-        XCTAssertEqual(HexColor.format(r: c.r, g: c.g, b: c.b), "FF8800")
-        XCTAssertNil(HexColor.parse("12345"))
+    func testNotchEffectHasNoGlowAnymore() throws {
+        XCTAssertEqual(AppSettings().notchEffect, .paw)
+        XCTAssertEqual(NotchEffect.allCases, [.none, .paw])           // podświetlenie zdjęte z listy wyboru
+        let legacy = try JSONDecoder().decode(AppSettings.self, from: Data("{\"notchEffect\":\"glow\"}".utf8))
+        XCTAssertEqual(legacy.notchEffect, .paw)                      // stare zapisy z "glow" lądują na łapce, nie wywalają ustawień
+        let unknown = try JSONDecoder().decode(AppSettings.self, from: Data("{\"notchEffect\":\"cat\"}".utf8))
+        XCTAssertEqual(unknown.notchEffect, .paw)
     }
 
     func testFavoritesFirstKeepsSortWithinGroup() throws {

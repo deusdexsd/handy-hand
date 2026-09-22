@@ -146,16 +146,8 @@ struct AppearanceTab: View {
             }
             Section(L("Notch: reakcja na kursor", "Notch: cursor reaction")) {
                 Picker(L("Efekt", "Effect"), selection: $store.data.settings.notchEffect) { ForEach(NotchEffect.allCases, id: \.self) { Text($0.label).tag($0) } }.pickerStyle(.segmented)
-                if store.settings.notchEffect == .glow {
-                    GlowColorRow(hex: $store.data.settings.glowHex)
-                    LabeledContent(L("Siła", "Strength")) {
-                        HStack { Text(L("słabo", "weak")).font(.caption).foregroundStyle(.secondary)
-                            Slider(value: $store.data.settings.glowIntensity, in: 0.3...2)
-                            Text(L("mocno", "strong")).font(.caption).foregroundStyle(.secondary) }.frame(width: 240)
-                    }
-                }
-                Text(L("Łapka wychyla się spod notcha i „pacuje” w stronę kursora tylko wtedy, gdy jest blisko (ok. 105 pt), a poza tym całkiem się chowa. Podświetlenie rozjaśnia się przy kursorze w promieniu ok. 140 pt. Łapka działa tylko przy notchu (górny środek); na bocznych krawędziach jest podświetlenie. Symulacja chodzi tylko, gdy łapka jest widoczna; „Brak” nie zużywa nic.",
-                       "The paw pokes out from under the notch and “pats” toward the cursor only when it's close (~105 pt), and stays fully hidden otherwise. The glow brightens within ~140 pt of the cursor. The paw only works at the notch (top-center); the side edges get the glow instead. The simulation only runs while the paw is visible; “None” uses nothing."))
+                Text(L("Łapka wychyla się spod notcha i „pacuje” w stronę kursora tylko wtedy, gdy jest blisko (ok. 105 pt), a poza tym całkiem się chowa. Działa tylko przy notchu (górny środek); na bocznych krawędziach nic się nie dzieje. Symulacja chodzi tylko, gdy łapka jest widoczna; „Brak” nie zużywa nic.",
+                       "The paw pokes out from under the notch and “pats” toward the cursor only when it's close (~105 pt), and stays fully hidden otherwise. Only works at the notch (top-center); the side edges show nothing. The simulation only runs while the paw is visible; “None” uses nothing."))
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Waveform") {
@@ -367,31 +359,3 @@ struct HotkeyRecorder: View {
         if let m = monitor { NSEvent.removeMonitor(m); monitor = nil }
     }
 }
-
-/// Kolor poświaty: trzy gotowe kolory i kółko kolorów systemu (dowolny kolor).
-struct GlowColorRow: View {
-    @Binding var hex: String
-    private var color: Binding<Color> {
-        Binding(get: { PanelController.glowTint(AppSettingsHex(hex: hex)) },
-                set: { c in
-                    if let n = NSColor(c).usingColorSpace(.sRGB) { hex = HexColor.format(r: n.redComponent, g: n.greenComponent, b: n.blueComponent) }
-                })
-    }
-    var body: some View {
-        LabeledContent(L("Kolor poświaty", "Glow color")) {
-            HStack(spacing: 10) {
-                ForEach(GlowChoice.allCases, id: \.self) { g in
-                    Button { hex = g.hex } label: {
-                        Circle().fill(PanelController.glowTint(AppSettingsHex(hex: g.hex))).frame(width: 18, height: 18)
-                            .overlay(Circle().strokeBorder(Color.primary.opacity(hex == g.hex ? 0.9 : 0.15), lineWidth: hex == g.hex ? 2 : 1))
-                    }.buttonStyle(.plain).help(g.label)
-                }
-                ColorPicker(L("Własny", "Custom"), selection: color, supportsOpacity: false).labelsHidden()
-                    .onAppear { NSColorPanel.shared.mode = .wheel }        // od razu kółko kolorów
-            }
-        }
-    }
-}
-
-/// Pomocnik: AppSettings z ustawionym kolorem (do jednego wspólnego przeliczania #RRGGBB -> Color).
-private func AppSettingsHex(hex: String) -> AppSettings { var s = AppSettings(); s.glowHex = hex; return s }

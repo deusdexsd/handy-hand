@@ -35,35 +35,15 @@ public enum VirtualNotchMode: String, Codable, CaseIterable, Sendable {
     }
 }
 
-/// Kolor podświetlenia notcha (z palety ikony łapki).
 public enum AppLanguage: String, Codable, CaseIterable, Sendable { case pl, en }
 
-public enum GlowChoice: String, Codable, CaseIterable, Sendable {
-    case violet, teal, blue
-    public var label: String { switch self { case .violet: LL("Fioletowy", "Violet"); case .teal: LL("Turkusowy", "Teal"); case .blue: LL("Niebieski", "Blue") } }
-    /// Kolor w formacie #RRGGBB (do kółka kolorów i zapisu).
-    public var hex: String { switch self { case .violet: "B87AFF"; case .teal: "5CE0D1"; case .blue: "5C8CFF" } }
-}
-
-/// Kolor jako „RRGGBB” (z # albo bez); nieprawidłowy tekst daje nil.
-public enum HexColor {
-    public static func parse(_ text: String) -> (r: Double, g: Double, b: Double)? {
-        let t = text.trimmingCharacters(in: CharacterSet(charactersIn: "# ")).uppercased()
-        guard t.count == 6, let v = UInt32(t, radix: 16) else { return nil }
-        return (Double((v >> 16) & 255) / 255, Double((v >> 8) & 255) / 255, Double(v & 255) / 255)
-    }
-    public static func format(r: Double, g: Double, b: Double) -> String {
-        func c(_ x: Double) -> Int { max(0, min(255, Int((x * 255).rounded()))) }
-        return String(format: "%02X%02X%02X", c(r), c(g), c(b))
-    }
-}
-
-/// Co dzieje się przy notchu, gdy kursor się zbliża.
+/// Co dzieje się przy notchu, gdy kursor się zbliża. Podświetlenie było i zostało zdjęte na życzenie Davida
+/// ("działało niebo lepiej wcześniej" — jego słowa); zostaje tylko łapka albo nic.
 public enum NotchEffect: String, Codable, CaseIterable, Sendable {
-    case none, glow, paw
-    public var label: String { switch self { case .none: LL("Brak", "None"); case .glow: LL("Podświetlenie", "Glow"); case .paw: LL("Łapka", "Paw") } }
-    /// Nieznana wartość (np. usunięty „cat” ze starego zapisu) nie może wywalić całych ustawień.
-    public init(from d: Decoder) throws { self = NotchEffect(rawValue: try d.singleValueContainer().decode(String.self)) ?? .glow }
+    case none, paw
+    public var label: String { switch self { case .none: LL("Brak", "None"); case .paw: LL("Łapka", "Paw") } }
+    /// Nieznana wartość (usunięte „glow”/„cat” ze starych zapisów) nie może wywalić całych ustawień — ląduje na łapce.
+    public init(from d: Decoder) throws { self = NotchEffect(rawValue: try d.singleValueContainer().decode(String.self)) ?? .paw }
 }
 
 public enum CategoryLayout: String, Codable, CaseIterable, Sendable {
@@ -99,12 +79,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var bigMediaPreview: Bool = false
     /// Klawisze 1-4: jaki typ pokazują (filtr w bieżącej kategorii).
     public var quickKeys: [MediaClass] = [.sfx, .music, .video, .image]
-    public var notchGlow: Bool = true      // zastąpione przez notchEffect (zostaje dla wczytania starych zapisów)
-    public var notchEffect: NotchEffect = .glow
-    public var glowColor: GlowChoice = .violet     // stary wybór z trzech kolorów (zostaje do wczytania starych zapisów)
-    /// Własny kolor podświetlenia (#RRGGBB, z kółka kolorów) i jego siła (0,3 słabo … 2 bardzo mocno).
-    public var glowHex: String = GlowChoice.violet.hex
-    public var glowIntensity: Double = 1.0
+    public var notchEffect: NotchEffect = .paw
     public var strictDuplicates: Bool = false
     /// Globalny skrót pokazujący/chowający panel bez najeżdżania kursorem (nil = wyłączony).
     public var toggleHotkey: HotKeySpec? {
@@ -123,7 +98,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var searchMetadata: Bool = false
     public init() {}
 
-    enum CodingKeys: String, CodingKey { case glowHex, glowIntensity, hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, waveformAutoScale, bigMediaPreview, quickKeys, notchGlow, notchEffect, glowColor, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
+    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, waveformAutoScale, bigMediaPreview, quickKeys, notchEffect, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
     /// Tolerancyjne dekodowanie: brakujący klucz (np. po aktualizacji) = wartość domyślna, a nie utrata ustawień.
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -145,12 +120,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         bigMediaPreview = try c.decodeIfPresent(Bool.self, forKey: .bigMediaPreview) ?? def.bigMediaPreview
         let qk = try c.decodeIfPresent([MediaClass].self, forKey: .quickKeys) ?? def.quickKeys
         quickKeys = qk.count == 4 ? qk : def.quickKeys
-        notchGlow = try c.decodeIfPresent(Bool.self, forKey: .notchGlow) ?? def.notchGlow
-        notchEffect = try c.decodeIfPresent(NotchEffect.self, forKey: .notchEffect) ?? (notchGlow ? .glow : .none)
-        glowColor = try c.decodeIfPresent(GlowChoice.self, forKey: .glowColor) ?? def.glowColor
-        let hx = try c.decodeIfPresent(String.self, forKey: .glowHex)
-        glowHex = hx.flatMap { HexColor.parse($0) != nil ? $0 : nil } ?? glowColor.hex      // stary zapis: kolor z dawnego wyboru
-        glowIntensity = min(2, max(0.3, try c.decodeIfPresent(Double.self, forKey: .glowIntensity) ?? def.glowIntensity))
+        notchEffect = try c.decodeIfPresent(NotchEffect.self, forKey: .notchEffect) ?? def.notchEffect
         strictDuplicates = try c.decodeIfPresent(Bool.self, forKey: .strictDuplicates) ?? def.strictDuplicates
         hotkeySpec = try c.decodeIfPresent(HotKeySpec.self, forKey: .hotkeySpec) ?? def.hotkeySpec
         hotkeyOff = try c.decodeIfPresent(Bool.self, forKey: .hotkeyOff) ?? def.hotkeyOff
