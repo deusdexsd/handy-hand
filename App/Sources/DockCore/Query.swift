@@ -60,27 +60,35 @@ public struct Preset: Identifiable, Codable, Equatable, Sendable {
 }
 
 /// Dane użytkownika potrzebne do filtrowania (bez UI).
-/// Notatka / zadanie w panelu po prawej. `collectionID == nil` = globalna (widoczna wszędzie).
+/// Notatka w panelu po prawej. `scope == nil` = globalna (widoczna wszędzie); inaczej przypięta do kolekcji, folderu lub podfolderu.
 public struct NoteItem: Identifiable, Hashable, Codable, Sendable {
     public var id = UUID()
     public var text: String
-    public var done = false
-    public var collectionID: UUID?
+    public var scope: CategoryID?
     public var created = Date()
-    public init(text: String, collectionID: UUID? = nil) { self.text = text; self.collectionID = collectionID }
-    enum CodingKeys: String, CodingKey { case id, text, done, collectionID, created }
+    public init(text: String, scope: CategoryID? = nil) { self.text = text; self.scope = scope }
+    enum CodingKeys: String, CodingKey { case id, text, scope, collectionID, created }
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         text = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
-        done = try c.decodeIfPresent(Bool.self, forKey: .done) ?? false
-        collectionID = try c.decodeIfPresent(UUID.self, forKey: .collectionID)
         created = try c.decodeIfPresent(Date.self, forKey: .created) ?? Date()
+        if let s = try c.decodeIfPresent(CategoryID.self, forKey: .scope) { scope = s }
+        else if let legacy = try c.decodeIfPresent(UUID.self, forKey: .collectionID) { scope = .collection(legacy) }   // wcześniejsza wersja: tylko kolekcje
+    }
+    public func encode(to e: Encoder) throws {
+        var c = e.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id); try c.encode(text, forKey: .text); try c.encode(created, forKey: .created)
+        try c.encodeIfPresent(scope, forKey: .scope)
     }
 
-    /// Notatki widoczne w danym miejscu: globalne + przypisane do zaznaczonej kolekcji.
-    public static func visible(_ notes: [NoteItem], collection: UUID?) -> [NoteItem] {
-        notes.filter { $0.collectionID == nil || $0.collectionID == collection }
+    /// Notatki widoczne w danym miejscu: globalne + przypisane dokładnie do bieżącej kategorii.
+    public static func visible(_ notes: [NoteItem], category: CategoryID) -> [NoteItem] {
+        notes.filter { $0.scope == nil || $0.scope == category }
+    }
+    /// Notatkę da się przypiąć tylko do kolekcji, folderu (źródła) i podfolderu.
+    public static func canScope(_ c: CategoryID) -> Bool {
+        switch c { case .collection, .source, .group: return true; default: return false }
     }
 }
 

@@ -625,9 +625,13 @@ final class IndexerTests: XCTestCase {
 
     func testNotesVisibilityAndDecode() throws {
         let c1 = UUID(), c2 = UUID()
-        let notes = [NoteItem(text: "global"), NoteItem(text: "a", collectionID: c1), NoteItem(text: "b", collectionID: c2)]
-        XCTAssertEqual(NoteItem.visible(notes, collection: nil).map(\.text), ["global"])
-        XCTAssertEqual(NoteItem.visible(notes, collection: c1).map(\.text), ["global", "a"])
+        let notes = [NoteItem(text: "global"), NoteItem(text: "a", scope: .collection(c1)), NoteItem(text: "b", scope: .source(c2))]
+        XCTAssertEqual(NoteItem.visible(notes, category: .all).map(\.text), ["global"])
+        XCTAssertEqual(NoteItem.visible(notes, category: .collection(c1)).map(\.text), ["global", "a"])
+        XCTAssertEqual(NoteItem.visible(notes, category: .source(c2)).map(\.text), ["global", "b"])
+        XCTAssertTrue(NoteItem.canScope(.group(c2, "x"))); XCTAssertFalse(NoteItem.canScope(.favorites))
+        let legacy = try JSONDecoder().decode(NoteItem.self, from: Data("{\"text\":\"t\",\"collectionID\":\"\(c1.uuidString)\",\"done\":true}".utf8))
+        XCTAssertEqual(legacy.scope, .collection(c1))                                   // stary zapis przypięty do kolekcji
         var org = Organization(); org.notes = notes
         let back = try JSONDecoder().decode(Organization.self, from: JSONEncoder().encode(org))
         XCTAssertEqual(back.notes, notes)

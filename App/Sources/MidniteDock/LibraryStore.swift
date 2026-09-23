@@ -114,13 +114,34 @@ final class LibraryStore: ObservableObject {
     }
 
     // MARK: notatki
-    var selectedCollectionID: UUID? { if case .collection(let id) = config.category { return id }; return nil }
-    var visibleNotes: [NoteItem] { NoteItem.visible(org.notes, collection: selectedCollectionID) }
+    var visibleNotes: [NoteItem] { NoteItem.visible(org.notes, category: config.category) }
+
+    /// Tytuł dowolnej kategorii z sidebaru (do podpisów notatek).
+    func title(for c: CategoryID) -> String? {
+        func find(_ es: [SidebarEntry]) -> String? {
+            for e in es { if e.category == c { return e.title }; if let t = find(e.children) { return t } }
+            return nil
+        }
+        return find(sidebar.flatMap(\.entries))
+    }
+
+    /// Miejsca, do których można przypiąć notatkę (kolekcje, foldery, podfoldery) — z nazwami jak w sidebarze.
+    var noteScopeChoices: [(category: CategoryID, title: String)] {
+        var out: [(CategoryID, String)] = []
+        func walk(_ es: [SidebarEntry], _ prefix: String) {
+            for e in es {
+                if NoteItem.canScope(e.category) { out.append((e.category, prefix + e.title)) }
+                walk(e.children, NoteItem.canScope(e.category) ? prefix + e.title + " › " : prefix)
+            }
+        }
+        walk(sidebar.flatMap(\.entries), "")
+        return out
+    }
 
     func addNote(_ text: String) {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty else { return }
-        data.org.notes.append(NoteItem(text: t, collectionID: selectedCollectionID))
+        data.org.notes.append(NoteItem(text: t, scope: NoteItem.canScope(config.category) ? config.category : nil))
     }
     func updateNote(_ id: UUID, _ change: (inout NoteItem) -> Void) {
         guard let i = data.org.notes.firstIndex(where: { $0.id == id }) else { return }

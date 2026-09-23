@@ -467,9 +467,9 @@ enum SnapshotRunner {
         store.select(category: .klass(.sfx))
         await shot("04g-sfx-scale-dark")
         store.select(category: .all)
-        store.addNote("Dobrać muzykę do intra"); store.addNote("Zgrać SFX do sceny 3"); store.settings.notesVisible = true
+        store.newCollection(name: "Projekt Alfa"); if let cid = store.org.collections.last?.id { store.select(category: .collection(cid)) }; store.addNote("Dobrać muzykę do intra"); store.select(category: .all); store.addNote("Zgrać SFX do sceny 3"); store.settings.notesVisible = true
         await shot("04l-notes-dark")
-        store.data.org.notes = []; store.settings.notesVisible = false
+        store.data.org.notes = []; store.data.org.collections.removeAll { $0.name == "Projekt Alfa" }; store.select(category: .all); store.settings.notesVisible = false
         store.select(category: .all); store.config.viewMode = .minimal; store.settings.tileScale = 0.4; await wait(0.6)
         await shot("04k-minimal-dark")
         store.config.viewMode = .grid; store.settings.tileScale = 1

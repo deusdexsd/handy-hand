@@ -14,7 +14,7 @@ struct NotesPanel: View {
             HStack {
                 Text(L("Notatki", "Notes")).font(.system(size: 12, weight: .semibold))
                 Spacer()
-                if store.selectedCollectionID != nil {
+                if NoteItem.canScope(store.config.category) {
                     Text(store.categoryTitle).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
@@ -23,7 +23,7 @@ struct NotesPanel: View {
                 LazyVStack(alignment: .leading, spacing: 4) {
                     ForEach(notes) { NoteRow(store: store, note: $0) }
                     if notes.isEmpty {
-                        Text(L("Brak notatek. Dopisz poniżej — zostanie zapisana jako globalna albo dla wybranej kolekcji.", "No notes yet. Add one below — it is saved as global, or for the selected collection."))
+                        Text(L("Brak notatek. Dopisz poniżej — zostanie zapisana jako globalna albo dla wybranej kolekcji lub folderu.", "No notes yet. Add one below — it is saved as global, or for the selected collection or folder."))
                             .font(.system(size: 11)).foregroundStyle(.secondary).padding(.horizontal, 10).padding(.top, 6)
                     }
                 }.padding(.horizontal, 6)
@@ -45,32 +45,32 @@ struct NotesPanel: View {
 private struct NoteRow: View {
     @ObservedObject var store: LibraryStore
     let note: NoteItem
-    @Environment(\.dockAccent) private var accent
+    @State private var hover = false
+
+    private var scopeTitle: String? { note.scope.flatMap { store.title(for: $0) } }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 6) {
-            Button { store.updateNote(note.id) { $0.done.toggle() } } label: {
-                Image(systemName: note.done ? "checkmark.circle.fill" : "circle").foregroundStyle(note.done ? accent : Color.secondary).font(.system(size: 13))
-            }.buttonStyle(.plain).padding(.top, 1)
-            VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(alignment: .top, spacing: 4) {
                 TextField("", text: Binding(get: { note.text }, set: { t in store.updateNote(note.id) { $0.text = t } }), axis: .vertical)
-                    .textFieldStyle(.plain).font(.system(size: 12)).strikethrough(note.done).foregroundStyle(note.done ? .secondary : .primary)
-                if let cid = note.collectionID, let c = store.org.collections.first(where: { $0.id == cid }) {
-                    Label(c.name, systemImage: "rectangle.stack").font(.system(size: 9.5)).foregroundStyle(.secondary).labelStyle(.titleAndIcon)
-                }
+                    .textFieldStyle(.plain).font(.system(size: 12))
+                Menu {
+                    Button(L("Globalna (wszędzie)", "Global (everywhere)")) { store.updateNote(note.id) { $0.scope = nil } }
+                    Divider()
+                    ForEach(Array(store.noteScopeChoices.enumerated()), id: \.offset) { _, ch in
+                        Button(ch.title) { store.updateNote(note.id) { $0.scope = ch.category } }
+                    }
+                } label: { Image(systemName: "folder.badge.plus").font(.system(size: 11)).foregroundStyle(.secondary) }
+                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                    .help(L("Przypisz do kolekcji lub folderu", "Assign to a collection or folder"))
+                Button { store.removeNote(note.id) } label: { Image(systemName: "xmark").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary) }
+                    .buttonStyle(.plain).padding(.top, 2).help(L("Usuń notatkę", "Delete note"))
             }
+            Text(scopeTitle.map { L("Przypisana do: \($0)", "Assigned to: \($0)") } ?? L("Globalna", "Global"))
+                .font(.system(size: 9.5)).foregroundStyle(.tertiary).lineLimit(1)
         }
-        .padding(.horizontal, 6).padding(.vertical, 5)
-        .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.06)))
-        .contextMenu {
-            Menu(L("Przypisz do kolekcji", "Assign to collection")) {
-                Button(L("Globalna (wszędzie)", "Global (everywhere)")) { store.updateNote(note.id) { $0.collectionID = nil } }
-                Divider()
-                ForEach(store.org.collections) { c in Button(c.name) { store.updateNote(note.id) { $0.collectionID = c.id } } }
-            }
-            Button(note.done ? L("Oznacz jako do zrobienia", "Mark as to-do") : L("Oznacz jako zrobione", "Mark as done")) { store.updateNote(note.id) { $0.done.toggle() } }
-            Divider()
-            Button(L("Usuń", "Delete"), role: .destructive) { store.removeNote(note.id) }
-        }
+        .padding(.horizontal, 8).padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(hover ? 0.09 : 0.06)))
+        .onHover { hover = $0 }
     }
 }
