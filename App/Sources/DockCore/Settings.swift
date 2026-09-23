@@ -205,7 +205,7 @@ public final class UserDataStore: @unchecked Sendable {
 
 /// Ikony toolbaru, które da się przestawiać (⌘ + przeciągnięcie). Pole wyszukiwania i tytuł kategorii zostają na stałe.
 public enum ToolbarItemID {
-    public static let defaultOrder = ["sidebar", "metadata", "filter", "sort", "favorites", "presets", "view", "pin", "settings"]
+    public static let defaultOrder = ["metadata", "filter", "sort", "favorites", "presets", "view", "pin", "settings"]
     /// Wyrzuca nieznane i zdublowane wpisy, brakujące dokłada na końcu.
     public static func sanitized(_ order: [String]) -> [String] {
         var seen = Set<String>(); var out: [String] = []

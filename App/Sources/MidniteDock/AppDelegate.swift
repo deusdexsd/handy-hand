@@ -95,7 +95,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 520), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
             w.title = L("Ustawienia", "Settings"); w.isReleasedWhenClosed = false
             w.contentView = NSHostingView(rootView: SettingsView(store: store))
-            w.center(); settingsWindow = w
+            settingsWindow = w
+            // Ustawienia nie mogą zasłaniać panelu Handy (rozwija się u góry / przy krawędzi): otwieramy je w dolnej części ekranu.
+            if let f = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame {
+                w.setFrameOrigin(NSPoint(x: f.midX - w.frame.width / 2, y: f.minY + 24))
+            } else { w.center() }
         }
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)

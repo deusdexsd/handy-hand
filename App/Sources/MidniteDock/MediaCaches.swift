@@ -38,7 +38,8 @@ actor ThumbGate {
 @MainActor
 final class ThumbnailStore: ObservableObject {
     @Published private(set) var version = 0
-    private var cache: [String: NSImage] = [:]
+    /// Miniatury w NSCache z limitem: przy tysiącach plików pamięć nie rośnie bez końca (wyrzucone wczytają się ponownie przy przewinięciu).
+    private let cache: NSCache<NSString, NSImage> = { let c = NSCache<NSString, NSImage>(); c.countLimit = 500; return c }()
     private var pending: Set<String> = []
     /// Nieudane miniatury zapamiętujemy: inaczej każda porażka podbijała `version`, widok się odświeżał i ładowanie startowało od nowa w kółko.
     private var failed: Set<String> = []
@@ -51,17 +52,17 @@ final class ThumbnailStore: ObservableObject {
     func hasFailed(_ item: MediaItem) -> Bool { failed.contains(item.path) }
 
     func image(for item: MediaItem) -> NSImage? {
-        if let i = cache[item.path] { return i }
+        if let i = cache.object(forKey: item.path as NSString) { return i }
         guard item.kind != .audio, !failed.contains(item.path), !pending.contains(item.path) else { return nil }
         pending.insert(item.path); attempts[item.path, default: 0] += 1
         let (url, dur, path, isImage) = (item.url, item.duration, item.path, item.kind == .image)
         let g = gate
         Task.detached(priority: .utility) {
             await g.acquire()
-            let img = isImage ? Self.renderImage(url, maxPixel: 480) : await Self.renderVideoFrame(url, dur)
+            let img = isImage ? Self.renderImage(url, maxPixel: 320) : await Self.renderVideoFrame(url, dur)
             await g.release()
             await MainActor.run { [weak self] in
-                if let img { self?.cache[path] = img } else { self?.failed.insert(path) }
+                if let img { self?.cache.setObject(img, forKey: path as NSString) } else { self?.failed.insert(path) }
                 self?.pending.remove(path); self?.version += 1
             }
         }
@@ -92,9 +93,13 @@ final class ThumbnailStore: ObservableObject {
     }
 
     nonisolated static func renderImage(_ url: URL, maxPixel: Int) -> NSImage? {
-        let opts: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        // Małe obrazy (ikony, małe PNG) zostają w oryginalnym rozmiarze — ImageIO nie ma ich rozciągać ani zmniejszać poniżej oryginału.
+        let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any]
+        let original = max(props?[kCGImagePropertyPixelWidth] as? Int ?? maxPixel, props?[kCGImagePropertyPixelHeight] as? Int ?? maxPixel)
+        let opts: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceThumbnailMaxPixelSize: min(maxPixel, original),
                                      kCGImageSourceCreateThumbnailWithTransform: true, kCGImageSourceShouldCacheImmediately: true]
-        return CGImageSourceCreateWithURL(url as CFURL, nil)
+        return Optional(src)
             .flatMap { CGImageSourceCreateThumbnailAtIndex($0, 0, opts as CFDictionary) }
             .map { NSImage(cgImage: $0, size: NSSize(width: $0.width, height: $0.height)) }
     }
@@ -105,7 +110,7 @@ final class ThumbnailStore: ObservableObject {
         guard let tracks = try? await asset.loadTracks(withMediaType: .video), !tracks.isEmpty else { return nil }
         let gen = AVAssetImageGenerator(asset: asset)
         gen.appliesPreferredTrackTransform = true
-        gen.maximumSize = CGSize(width: 480, height: 270)
+        gen.maximumSize = CGSize(width: 320, height: 180)
         let t = CMTime(seconds: min(1, dur / 2), preferredTimescale: 600)
         guard let cg = try? await gen.image(at: t).image else { return nil }
         return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))

@@ -157,7 +157,7 @@ struct MasonryGrid: View {
         let distributed = MasonryLayout.distribute(heights: hs, columns: cols).map { $0.map { items[$0] } }
         HStack(alignment: .top, spacing: 10) {
             ForEach(0..<cols, id: \.self) { c in
-                VStack(spacing: 10) {
+                LazyVStack(spacing: 10) {
                     ForEach(distributed[c]) { item in
                         MinimalistTile(store: store, waveforms: waveforms, thumbs: thumbs, item: item).id(item.path)
                     }
@@ -225,7 +225,15 @@ struct MinimalistTile: View {
                     }
                 }
         } else if let img = thumbs.image(for: item) {
-            Image(nsImage: img).resizable().scaledToFit().frame(maxWidth: .infinity).background(Color.black.opacity(0.22))
+            Group {
+                if MasonryLayout.isSmallImage(pixelWidth: item.pixelWidth, pixelHeight: item.pixelHeight) {
+                    // Mała ikona / PNG: w oryginalnym rozmiarze (nie rozciągamy do szerokości kolumny), wyśrodkowana na neutralnym tle.
+                    ZStack { Color.primary.opacity(0.08); Image(nsImage: img).interpolation(.high).frame(width: img.size.width, height: img.size.height) }
+                        .frame(height: 70 * store.settings.tileScale)
+                } else {
+                    Image(nsImage: img).resizable().scaledToFit().frame(maxWidth: .infinity).background(Color.black.opacity(0.22))
+                }
+            }
                 .overlay(alignment: .bottomTrailing) {
                     if item.kind == .video { Text(Fmt.duration(item.duration)).font(.system(size: 10, weight: .medium)).monospacedDigit()
                         .padding(.horizontal, 5).padding(.vertical, 1.5).background(.ultraThinMaterial, in: Capsule()).padding(4) }

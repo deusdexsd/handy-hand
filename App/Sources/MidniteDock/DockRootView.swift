@@ -64,6 +64,7 @@ struct ToolbarView: View {
     var body: some View {
         let order = ToolbarItemID.sanitized(store.settings.toolbarOrder)
         HStack(spacing: 6) {
+            item("sidebar")
             Text(store.categoryTitle).font(.system(size: 13, weight: .semibold)).lineLimit(1).frame(minWidth: 70, alignment: .leading)
             SearchField(text: $store.search, placeholder: L("Szukaj w: \(store.categoryTitle)", "Search in: \(store.categoryTitle)"))
             ForEach(order, id: \.self) { id in

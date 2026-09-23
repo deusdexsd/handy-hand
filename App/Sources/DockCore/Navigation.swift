@@ -38,7 +38,14 @@ public enum MasonryLayout {
 
     public static func estimatedHeight(isAudio: Bool, pixelWidth: Int?, pixelHeight: Int?, scale: Double = 1) -> Double {
         guard !isAudio, let w = pixelWidth, let h = pixelHeight, w > 0, h > 0 else { return 64 * scale }
+        if isSmallImage(pixelWidth: w, pixelHeight: h) { return 70 * scale }
         return min(260, max(70, 160 * Double(h) / Double(w))) * scale
+    }
+
+    /// Obrazy mniejsze niż ~160 px (ikony) pokazujemy w naturalnym rozmiarze zamiast rozciągać.
+    public static func isSmallImage(pixelWidth: Int?, pixelHeight: Int?) -> Bool {
+        guard let w = pixelWidth, let h = pixelHeight else { return false }
+        return max(w, h) < 160
     }
 
     /// Indeksy elementów w kolumnach (kolejność z góry na dół).
