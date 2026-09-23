@@ -67,6 +67,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var sidePosition: Double = 0.5
     public var virtualNotch: VirtualNotchMode = .auto
     public var categoryLayout: CategoryLayout = .sidebar
+    /// Pasek kategorii (Ulubione/Typ/Foldery/Kolekcje) całkiem schowany — ikonka w toolbarze, reszta panelu zostaje.
+    public var sidebarHidden: Bool = false
+    /// Widok siatki bez nazwy i wymiarów pod kaflem — tylko obraz/waveform.
+    public var minimalistGrid: Bool = false
     public var accent: AccentChoice = .system
     public var sourceTints: Bool = false
     public var waveformScaleSeconds: Double = 5
@@ -98,7 +102,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var searchMetadata: Bool = false
     public init() {}
 
-    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, waveformAutoScale, bigMediaPreview, quickKeys, notchEffect, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
+    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, waveformAutoScale, bigMediaPreview, quickKeys, notchEffect, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, sidebarHidden, minimalistGrid, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
     /// Tolerancyjne dekodowanie: brakujący klucz (np. po aktualizacji) = wartość domyślna, a nie utrata ustawień.
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -109,6 +113,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         sidePosition = min(1, max(0, try c.decodeIfPresent(Double.self, forKey: .sidePosition) ?? def.sidePosition))
         virtualNotch = try c.decodeIfPresent(VirtualNotchMode.self, forKey: .virtualNotch) ?? def.virtualNotch
         categoryLayout = try c.decodeIfPresent(CategoryLayout.self, forKey: .categoryLayout) ?? def.categoryLayout
+        sidebarHidden = try c.decodeIfPresent(Bool.self, forKey: .sidebarHidden) ?? def.sidebarHidden
+        minimalistGrid = try c.decodeIfPresent(Bool.self, forKey: .minimalistGrid) ?? def.minimalistGrid
         accent = try c.decodeIfPresent(AccentChoice.self, forKey: .accent) ?? def.accent
         sourceTints = try c.decodeIfPresent(Bool.self, forKey: .sourceTints) ?? def.sourceTints
         waveformScaleSeconds = try c.decodeIfPresent(Double.self, forKey: .waveformScaleSeconds) ?? def.waveformScaleSeconds

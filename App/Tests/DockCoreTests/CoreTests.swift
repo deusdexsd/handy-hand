@@ -612,6 +612,14 @@ final class IndexerTests: XCTestCase {
         XCTAssertEqual(bad.finderKey, 9)                    // 3 zajęte przez filtr typu: wraca domyślny
     }
 
+    func testSidebarHiddenAndMinimalistGridDefaultsAndDecode() throws {
+        XCTAssertFalse(AppSettings().sidebarHidden); XCTAssertFalse(AppSettings().minimalistGrid)
+        let on = try JSONDecoder().decode(AppSettings.self, from: Data("{\"sidebarHidden\":true,\"minimalistGrid\":true}".utf8))
+        XCTAssertTrue(on.sidebarHidden); XCTAssertTrue(on.minimalistGrid)
+        let old = try JSONDecoder().decode(AppSettings.self, from: Data("{\"mode\":\"hover\"}".utf8))     // stary zapis bez tych kluczy
+        XCTAssertFalse(old.sidebarHidden); XCTAssertFalse(old.minimalistGrid)
+    }
+
     func testNotchEffectHasNoGlowAnymore() throws {
         XCTAssertEqual(AppSettings().notchEffect, .none)      // bazowo bez efektu (David: łapka nie ma rzucać się w oczy domyślnie)
         XCTAssertEqual(NotchEffect.allCases, [.none, .paw])           // podświetlenie zdjęte z listy wyboru

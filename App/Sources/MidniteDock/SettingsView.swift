@@ -144,6 +144,11 @@ struct AppearanceTab: View {
             Section(L("Źródła", "Sources")) {
                 Toggle(L("Subtelne kolory ikon źródeł w sidebarze", "Subtle source-icon colors in the sidebar"), isOn: $store.data.settings.sourceTints)
             }
+            Section(L("Siatka", "Grid")) {
+                Toggle(L("Widok minimalistyczny (bez nazw i wymiarów pod kaflem)", "Minimalist view (no names or dimensions under tiles)"), isOn: $store.data.settings.minimalistGrid)
+                Text(L("Zostaje sam obraz albo waveform — czyściej, bliżej siatki w stylu Pinteresta.", "Just the image or waveform stays — cleaner, closer to a Pinterest-style grid."))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section(L("Notch: reakcja na kursor", "Notch: cursor reaction")) {
                 Picker(L("Efekt", "Effect"), selection: $store.data.settings.notchEffect) { ForEach(NotchEffect.allCases, id: \.self) { Text($0.label).tag($0) } }.pickerStyle(.segmented)
                 Text(L("Łapka wychyla się spod notcha i „pacuje” w stronę kursora tylko wtedy, gdy jest blisko (ok. 105 pt), a poza tym całkiem się chowa. Działa tylko przy notchu (górny środek); na bocznych krawędziach nic się nie dzieje. Symulacja chodzi tylko, gdy łapka jest widoczna; „Brak” nie zużywa nic.",

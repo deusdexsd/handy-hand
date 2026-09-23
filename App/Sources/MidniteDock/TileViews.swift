@@ -97,13 +97,15 @@ struct TileView: View {
             }
             .frame(height: 64)
             .clipShape(RoundedRectangle(cornerRadius: 6))
-            VStack(alignment: .leading, spacing: 1) {
-                Text(item.name).font(.system(size: 12, weight: .medium)).lineLimit(1).truncationMode(.middle)
-                HStack(spacing: 4) {
-                    Image(systemName: MetaText.icon(item)).font(.system(size: 9))
-                    Text(MetaText.line(item))
+            if !store.settings.minimalistGrid {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(item.name).font(.system(size: 12, weight: .medium)).lineLimit(1).truncationMode(.middle)
+                    HStack(spacing: 4) {
+                        Image(systemName: MetaText.icon(item)).font(.system(size: 9))
+                        Text(MetaText.line(item))
+                    }
+                    .font(.system(size: 10.5)).foregroundStyle(.secondary).lineLimit(1)
                 }
-                .font(.system(size: 10.5)).foregroundStyle(.secondary).lineLimit(1)
             }
         }
         .padding(7)

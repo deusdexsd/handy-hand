@@ -23,10 +23,10 @@ struct DockRootView: View {
         let accent = store.settings.accent.color
         VStack(spacing: 0) {
             ToolbarView(store: store)
-            if store.settings.categoryLayout == .chips { ChipsBar(store: store) }
+            if !store.settings.sidebarHidden, store.settings.categoryLayout == .chips { ChipsBar(store: store) }
             FilterBar(store: store)
             HStack(spacing: 0) {
-                if store.settings.categoryLayout == .sidebar {
+                if !store.settings.sidebarHidden, store.settings.categoryLayout == .sidebar {
                     SidebarView(store: store).frame(width: 178)
                 }
                 VStack(spacing: 0) {
@@ -57,8 +57,8 @@ struct ToolbarView: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            iconButton(store.settings.categoryLayout == .sidebar ? "sidebar.left" : "rectangle.split.3x1", L("Układ kategorii", "Category layout")) {
-                store.settings.categoryLayout = store.settings.categoryLayout == .sidebar ? .chips : .sidebar
+            iconButton("sidebar.left", L("Pokaż / ukryj pasek kategorii", "Show / hide the category sidebar"), active: !store.settings.sidebarHidden) {
+                store.settings.sidebarHidden.toggle()
             }
             Text(store.categoryTitle).font(.system(size: 13, weight: .semibold)).lineLimit(1).frame(minWidth: 70, alignment: .leading)
             SearchField(text: $store.search, placeholder: L("Szukaj w: \(store.categoryTitle)", "Search in: \(store.categoryTitle)"))

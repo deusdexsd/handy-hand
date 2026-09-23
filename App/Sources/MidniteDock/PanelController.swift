@@ -3,7 +3,7 @@ import SwiftUI
 import Combine
 import DockCore
 
-enum PanelKey { case space, up, down, left, right, enter, escape, copy, digit(Int, shift: Bool) }
+enum PanelKey { case space, up, down, left, right, enter, escape, copy, paste, selectAll, digit(Int, shift: Bool) }
 
 final class DockPanel: NSPanel {
     var onKey: ((PanelKey) -> Bool)?
@@ -32,10 +32,16 @@ final class DockPanel: NSPanel {
             case .digit:
                 // Skróty cyfrowe działają TYLKO z ⌘ — same cyfry zawsze trafiają tam, gdzie akurat pisze się tekst.
                 if event.modifierFlags.contains(.command), onKey?(k) == true { return }
-            case .copy:
-                // ⌘C poza polem tekstowym kopiuje zaznaczone pliki; w polu (np. wyszukiwarka) ma kopiować zwykły tekst, więc go nie łapiemy.
+            case .copy, .paste:
+                // ⌘C/⌘V poza polem tekstowym działają na plikach; w polu (np. wyszukiwarka) mają kopiować/wklejać zwykły tekst, więc ich nie łapiemy.
                 if event.modifierFlags.contains(.command), event.modifierFlags.intersection([.control, .option, .shift]).isEmpty,
                    !(firstResponder is NSTextView), onKey?(k) == true { return }
+            case .selectAll:
+                // ⌘A: w polu tekstowym zaznacza tekst (apka nie ma menu Edytuj, więc nikt inny tego nie złapie);
+                // poza polem zaznacza wszystkie widoczne pliki — jak w Finderze.
+                guard event.modifierFlags.contains(.command), event.modifierFlags.intersection([.control, .option, .shift]).isEmpty else { break }
+                if let tv = firstResponder as? NSTextView { tv.selectAll(nil) } else { _ = onKey?(k) }
+                return
             default:
                 if !(firstResponder is NSTextView), event.modifierFlags.intersection([.command, .control, .option]).isEmpty,
                    onKey?(k) == true { return }
@@ -54,6 +60,8 @@ final class DockPanel: NSPanel {
         case 36, 76: return .enter
         case 53: return .escape
         case 8: return .copy
+        case 9: return .paste
+        case 0: return .selectAll
         default:
             let digits: [UInt16: Int] = [18: 1, 19: 2, 20: 3, 21: 4, 23: 5, 22: 6, 26: 7, 28: 8, 25: 9, 29: 0]
             return digits[e.keyCode].map { .digit($0, shift: e.modifierFlags.contains(.shift)) }
@@ -121,8 +129,10 @@ final class PanelController: NSObject {
         body.canLeaveTextField = { [weak self] in self.map { $0.store.prompt == nil && $0.store.notice == nil } ?? true }
         rebuildHandle()
 
-        NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved]) { [weak self] _ in MainActor.assumeIsolated { self?.updateHover() } }
-        NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved]) { [weak self] e in MainActor.assumeIsolated { self?.updateHover() }; return e }
+        // .leftMouseDragged obok .mouseMoved: to samo najechanie łapie też wtedy, gdy w dłoni jest plik przeciągany
+        // z Findera (podczas przeciągania system nie generuje .mouseMoved) — panel rozwija się tak samo jak na zwykłe najechanie.
+        NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] _ in MainActor.assumeIsolated { self?.updateHover() } }
+        NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] e in MainActor.assumeIsolated { self?.updateHover() }; return e }
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(appActivated(_:)), name: NSWorkspace.didActivateApplicationNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         frontmostWatched = isWatched(NSWorkspace.shared.frontmostApplication)
@@ -245,6 +255,8 @@ final class PanelController: NSObject {
         case .right: store.moveSelection(.right); return true
         case .enter: store.renameSelected(); return store.selection.count == 1     // jak w Finderze: Enter = zmiana nazwy
         case .copy: store.copySelectionToPasteboard(); return !store.selection.isEmpty     // jak w Finderze: ⌘C = kopiuj pliki do schowka
+        case .paste: return store.pasteFilesFromClipboard()                                // ⌘V = wklej pliki skopiowane skądinąd (np. z Findera)
+        case .selectAll: store.selection = Set(store.visible.map(\.path)); return true     // ⌘A poza polem = zaznacz wszystkie widoczne
         case .escape: return false
         }
     }
@@ -707,6 +719,26 @@ enum SelfTest {
                 await wait(0.1)
                 let copiedInField = (NSPasteboard.general.readObjects(forClasses: [NSURL.self]) as? [URL]) ?? []
                 print("SELF 32f ⌘C w polu tekstowym: nie łapiemy jako skrót plikowy=\(copiedInField.isEmpty)")
+
+                // ⌘A: w polu zaznacza cały tekst; poza polem zaznacza wszystkie widoczne pliki (jak w Finderze).
+                store.search = "abcdefgh"; panel.makeFirstResponder(field); await wait(0.2)
+                (panel.firstResponder as? NSTextView)?.setSelectedRange(NSRange(location: 0, length: 0))
+                panel.sendEvent(key(0, "a", cmd: true)); await wait(0.1)
+                let selLen = (panel.firstResponder as? NSTextView)?.selectedRange().length ?? -1
+                print("SELF 32g ⌘A w polu: zaznaczono cały tekst=\(selLen == store.search.count)"); store.search = ""
+                panel.makeFirstResponder(nil); store.selection = []
+                panel.sendEvent(key(0, "a", cmd: true)); await wait(0.1)
+                print("SELF 32h ⌘A poza polem: zaznaczono wszystkie widoczne=\(store.selection == Set(store.visible.map(\.path))) (\(store.selection.count))")
+                store.selection = []
+
+                // ⌘V poza polem: plik skopiowany skądinąd (np. z Findera) trafia do biblioteki jak przeciągnięcie.
+                let pasteFile = FileManager.default.temporaryDirectory.appendingPathComponent("paste-test-\(UUID().uuidString).wav")
+                try? DevMedia.tone(.init(name: "paste_test", seconds: 0.5, shape: "impact"), to: pasteFile, seed: 9)
+                NSPasteboard.general.clearContents(); NSPasteboard.general.writeObjects([pasteFile as NSURL])
+                let beforeItems = store.items.count
+                panel.sendEvent(key(9, "v", cmd: true)); await wait(1.2)
+                print("SELF 32i ⌘V poza polem: przybyło plików=\(store.items.count > beforeItems) (\(beforeItems) -> \(store.items.count))")
+                NSPasteboard.general.clearContents()
             } else { print("SELF 32 brak pola wyszukiwania w panelu") }
         }
         // Zapis na dysk

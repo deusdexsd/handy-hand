@@ -408,6 +408,13 @@ final class LibraryStore: ObservableObject {
     /// ⌘C w panelu: kopiuje bieżące zaznaczenie jako pliki.
     func copySelectionToPasteboard() { copyFilesToPasteboard(selectedPaths) }
 
+    /// ⌘V poza polem tekstowym: pliki skopiowane skądinąd (np. ⌘C w Finderze) trafiają do biblioteki, tak jak przeciągnięcie.
+    @discardableResult
+    func pasteFilesFromClipboard() -> Bool {
+        guard let urls = NSPasteboard.general.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], !urls.isEmpty else { return false }
+        return addDropped(urls)
+    }
+
     // MARK: ulubione, tagi, kolekcje
     func toggleFavorite(_ paths: [String]) {
         let all = equivalents(paths)
