@@ -145,6 +145,22 @@ struct AppearanceTab: View {
             Section(L("Źródła", "Sources")) {
                 Toggle(L("Subtelne kolory ikon źródeł w sidebarze", "Subtle source-icon colors in the sidebar"), isOn: $store.data.settings.sourceTints)
             }
+            Section(L("Ikona w pasku menu", "Menu bar icon")) {
+                HStack(spacing: 8) {
+                    ForEach(MenuBarIcon.allCases, id: \.self) { ic in
+                        let on = store.data.settings.menuBarIcon == ic
+                        Button { store.data.settings.menuBarIcon = ic } label: {
+                            VStack(spacing: 4) {
+                                Image(systemName: ic.symbol).font(.system(size: 18)).frame(width: 34, height: 26)
+                                Text(ic.label).font(.system(size: 10)).lineLimit(1)
+                            }
+                            .padding(.horizontal, 8).padding(.vertical, 6)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(on ? Color.accentColor.opacity(0.22) : Color.primary.opacity(0.06)))
+                            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(on ? Color.accentColor : .clear, lineWidth: 1.5))
+                        }.buttonStyle(.plain).accessibilityLabel(ic.label)
+                    }
+                }
+            }
             Section(L("Widok elementów", "Item view")) {
                 HStack {
                     Text(L("Rozmiar elementów", "Item size"))

@@ -75,6 +75,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var tileScale: Double = 1
     /// Panel notatek i zadań po prawej stronie.
     public var notesVisible: Bool = false
+    /// Ikona aplikacji w pasku menu.
+    public var menuBarIcon: MenuBarIcon = .paw
     /// Kolejność ikon w toolbarze (przeciąganie z ⌘). Puste/nieznane wpisy uzupełnia widok.
     public var toolbarOrder: [String] = ToolbarItemID.defaultOrder
     public var accent: AccentChoice = .system
@@ -110,7 +112,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var searchMetadata: Bool = false
     public init() {}
 
-    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, stopPlaybackOnCollapse, waveformAutoScale, bigMediaPreview, quickKeys, notchEffect, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, sidebarHidden, minimalistHideAudioNames, tileScale, notesVisible, toolbarOrder, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
+    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, stopPlaybackOnCollapse, waveformAutoScale, bigMediaPreview, quickKeys, notchEffect, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, sidebarHidden, minimalistHideAudioNames, tileScale, notesVisible, menuBarIcon, toolbarOrder, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
     /// Tolerancyjne dekodowanie: brakujący klucz (np. po aktualizacji) = wartość domyślna, a nie utrata ustawień.
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -123,6 +125,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         categoryLayout = try c.decodeIfPresent(CategoryLayout.self, forKey: .categoryLayout) ?? def.categoryLayout
         sidebarHidden = try c.decodeIfPresent(Bool.self, forKey: .sidebarHidden) ?? def.sidebarHidden
         minimalistHideAudioNames = try c.decodeIfPresent(Bool.self, forKey: .minimalistHideAudioNames) ?? def.minimalistHideAudioNames
+        menuBarIcon = try c.decodeIfPresent(MenuBarIcon.self, forKey: .menuBarIcon) ?? def.menuBarIcon
         notesVisible = try c.decodeIfPresent(Bool.self, forKey: .notesVisible) ?? def.notesVisible
         tileScale = min(1.8, max(0.35, try c.decodeIfPresent(Double.self, forKey: .tileScale) ?? def.tileScale))
         toolbarOrder = ToolbarItemID.sanitized(try c.decodeIfPresent([String].self, forKey: .toolbarOrder) ?? def.toolbarOrder)

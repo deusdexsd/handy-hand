@@ -639,6 +639,27 @@ final class IndexerTests: XCTestCase {
         XCTAssertTrue(AppSettings().toolbarOrder.contains("notes"))
     }
 
+    func testFCPXMLImportReadsMediaRepsAndAssets() throws {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("fcpx-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        let real = tmp.appendingPathComponent("Klip 1.mov"); try Data([0]).write(to: real)
+        let enc = real.absoluteString
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?><fcpxml version="1.10"><resources>
+        <asset id="r1" name="A"><media-rep kind="original-media" src="\(enc)"/></asset>
+        <asset id="r2" name="B" src="file:///nie/ma/mnie.wav"/>
+        <asset id="r3" name="dup"><media-rep src="\(enc)"/></asset></resources>
+        <library><event name="Event X"><project name="Projekt Alfa"/></event></library></fcpxml>
+        """
+        let r = try XCTUnwrap(FCPXMLImport.parse(Data(xml.utf8), fallbackName: "plik"))
+        XCTAssertEqual(r.name, "Projekt Alfa")
+        XCTAssertEqual(r.existing, [PathUtil.canonical(real.path)])       // duplikat złączony
+        XCTAssertEqual(r.missing, 1)
+        XCTAssertTrue(FCPXMLImport.isFCPXML(URL(fileURLWithPath: "/a/b.fcpxmld")))
+        XCTAssertEqual(AppSettings().menuBarIcon, .paw); XCTAssertEqual(MenuBarIcon.allCases.count, 5)
+        try? FileManager.default.removeItem(at: tmp)
+    }
+
     func testMasonryNavigationStaysInColumnsAndCrossesToNeighbours() {
         // 2 kolumny: wysokości 100, 50, 50, 50 → kolumna0 = [0, 3], kolumna1 = [1, 2]
         let h = [100.0, 50, 50, 50]

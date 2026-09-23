@@ -175,6 +175,12 @@ final class PanelController: NSObject {
 
         // Zmiany ustawień (tryb, pozycja, rozmiar, wirtualny notch) przeliczają układ na żywo.
         store.$data.map(\.settings).removeDuplicates().sink { [weak self] _ in DispatchQueue.main.async { self?.settingsChanged() } }.store(in: &bag)
+        NotificationCenter.default.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { if let self, self.expanded { self.store.menuTracking = true } }
+        }
+        NotificationCenter.default.addObserver(forName: NSMenu.didEndTrackingNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { guard let self, self.store.menuTracking else { return }; self.store.menuTracking = false; self.updateHover(); self.apply(animated: true) }
+        }
         store.$dragging.removeDuplicates().sink { [weak self] _ in DispatchQueue.main.async { self?.apply(animated: true) } }.store(in: &bag)
         store.$prompt.sink { [weak self] p in DispatchQueue.main.async { if p != nil { self?.body.makeKey() }; self?.apply(animated: true) } }.store(in: &bag)
         store.$notice.sink { [weak self] _ in DispatchQueue.main.async { self?.apply(animated: true) } }.store(in: &bag)
@@ -853,6 +859,33 @@ enum SelfTest {
             let r = store.redo(); let afterR = store.org.favorites
             print("SELF 34 cofanie: notatka dodana=\(n1) cofnięta=\(u1 && afterU1 == n1 - 1) ulubione cofnięte=\(u2 && afterU2 == favBefore) (było \(favAfter.count)) ponowione=\(r && afterR == favAfter)")
             store.undo(); store.undo()
+        }
+        // Import FCPXML + upuszczanie notatek na sidebar
+        do {
+            let some = store.items.prefix(2).map(\.path)
+            let xmlURL = FileManager.default.temporaryDirectory.appendingPathComponent("selftest-\(UUID().uuidString).fcpxml")
+            let body = some.map { "<asset id=\"a\(UUID().uuidString.prefix(4))\"><media-rep src=\"\(URL(fileURLWithPath: $0).absoluteString)\"/></asset>" }.joined()
+            try? "<fcpxml><resources>\(body)</resources><library><event name=\"E\"><project name=\"Import Test\"/></event></library></fcpxml>".write(to: xmlURL, atomically: true, encoding: .utf8)
+            let colBefore = store.org.collections.count
+            let okImp = store.addDropped([xmlURL]); await wait(0.3)
+            let col = store.org.collections.first { $0.name == "Import Test" }
+            print("SELF 35 import FCPXML: przyjęty=\(okImp) kolekcja=\(col != nil) plików=\(col?.paths.count ?? -1) (oczekiwane \(some.count)) kolekcji \(colBefore)->\(store.org.collections.count) komunikat=\(store.notice ?? "-")")
+            store.notice = nil
+            if let cid = col?.id {
+                store.addNote("do-przeniesienia"); let nid = store.org.notes.last!.id
+                let ok1 = store.dropNote([LibraryStore.notePayloadPrefix + nid.uuidString], onto: .collection(cid))
+                let s1 = store.org.notes.first { $0.id == nid }?.scope
+                let ok2 = store.dropNote([LibraryStore.notePayloadPrefix + nid.uuidString], onto: .klass(.sfx))
+                let s2 = store.org.notes.first { $0.id == nid }?.scope
+                let ok3 = store.dropNote([LibraryStore.notePayloadPrefix + nid.uuidString], onto: .all)
+                let s3 = store.org.notes.first { $0.id == nid }?.scope
+                let bad = store.dropNote(["cokolwiek"], onto: .all)
+                print("SELF 35b notatka: na kolekcję=\(ok1 && s1 == .collection(cid)) na typ=\(ok2 && s2 == .klass(.sfx)) na Wszystko=\(ok3 && s3 == nil) obcy tekst odrzucony=\(!bad)")
+                store.removeNote(nid); store.deleteCollection(cid)
+            }
+            try? FileManager.default.removeItem(at: xmlURL)
+            store.menuTracking = true; controller.debugMouse = nil
+            print("SELF 35c menuTracking trzyma panel: \(store.holdsPanelOpen)"); store.menuTracking = false
         }
         // Zapis na dysk
         store.settings.accent = .violet; store.settings.placement = .rightMiddle

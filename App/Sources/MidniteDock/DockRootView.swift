@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import AVFoundation
+import UniformTypeIdentifiers
 import DockCore
 
 @MainActor
@@ -302,6 +303,7 @@ struct ChipsBar: View {
                         .background(Capsule().fill(sel ? store.settings.accent.color : Color.primary.opacity(0.08)))
                         .foregroundStyle(sel ? Color.white : Color.primary)
                     }.buttonStyle(.plain)
+                    .dropDestination(for: String.self) { items, _ in store.dropNote(items, onto: e.category) }
                 }
             }.padding(.horizontal, 12).padding(.bottom, 8)
         }
@@ -312,6 +314,7 @@ struct SidebarView: View {
     @ObservedObject var store: LibraryStore
     @Environment(\.sourceTints) private var tints
     @State private var expanded: Set<String> = []
+    @State private var noteDropTarget: String?
 
     var body: some View {
         ScrollView {
@@ -367,6 +370,10 @@ struct SidebarView: View {
             guard let cid = e.collectionID else { return false }
             store.add(urls.map { PathUtil.canonical($0.path) }.filter { store.item($0) != nil }, toCollection: cid); return true
         }
+        .dropDestination(for: String.self, action: { items, _ in store.dropNote(items, onto: e.category) }, isTargeted: { on in
+            if on { noteDropTarget = e.id } else if noteDropTarget == e.id { noteDropTarget = nil }
+        })
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(noteDropTarget == e.id ? Color.accentColor : .clear, lineWidth: 1.5))
         .contextMenu {
             if let cid = e.collectionID {
                 Button(L("Zmień nazwę…", "Rename…")) { store.ask(L("Zmień nazwę", "Rename"), placeholder: L("Nazwa", "Name"), initial: e.title, action: L("Zapisz", "Save")) { store.renameCollection(cid, to: $0) } }
@@ -406,6 +413,16 @@ enum Pickers {
         if p.runModal() == .OK { done(p.urls) }
     }
 
+    @MainActor static func pickFCPXML(_ done: @escaping (URL) -> Void) {
+        let p = NSOpenPanel()
+        p.title = L("Wybierz eksport XML z Final Cut Pro (Plik → Eksportuj XML)", "Choose an XML export from Final Cut Pro (File → Export XML)")
+        p.canChooseFiles = true; p.canChooseDirectories = true; p.allowsMultipleSelection = false; p.treatsFilePackagesAsDirectories = false
+        p.allowedContentTypes = [UTType(filenameExtension: "fcpxml"), UTType(filenameExtension: "fcpxmld")].compactMap { $0 }
+        p.prompt = L("Importuj", "Import")
+        NSApp.activate(ignoringOtherApps: true)
+        if p.runModal() == .OK, let u = p.url { done(u) }
+    }
+
     @MainActor static func pickLibrary(_ done: @escaping (URL) -> Void) {
         let p = NSOpenPanel()
         p.title = L("Wybierz bibliotekę Final Cut Pro (.fcpbundle)", "Choose a Final Cut Pro library (.fcpbundle)")
@@ -422,6 +439,7 @@ struct AddMenuItems: View {
     var body: some View {
         Button(L("Dodaj folder…", "Add folder…")) { Pickers.pickFolder(title: L("Wybierz folder z dźwiękami, materiałem lub obrazami", "Choose a folder with sounds, footage or images")) { store.addSource(url: $0, kind: .folder) } }
         Button(L("Dodaj pliki…", "Add files…")) { Pickers.pickFiles { store.addFiles($0) } }
+        Button(L("Importuj projekt z FCP (.fcpxml)…", "Import an FCP project (.fcpxml)…")) { Pickers.pickFCPXML { store.importFCPXML($0) } }
         Button(L("Dodaj bibliotekę FCP…", "Add FCP library…")) { Pickers.pickLibrary { store.addSource(url: $0, kind: $0.pathExtension.lowercased() == "fcpbundle" ? .fcpLibrary : .folder) } }
     }
 }

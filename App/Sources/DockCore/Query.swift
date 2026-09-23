@@ -88,7 +88,7 @@ public struct NoteItem: Identifiable, Hashable, Codable, Sendable {
     }
     /// Notatkę da się przypiąć tylko do kolekcji, folderu (źródła) i podfolderu.
     public static func canScope(_ c: CategoryID) -> Bool {
-        switch c { case .collection, .source, .group: return true; default: return false }
+        switch c { case .collection, .source, .group, .klass: return true; default: return false }
     }
 }
 

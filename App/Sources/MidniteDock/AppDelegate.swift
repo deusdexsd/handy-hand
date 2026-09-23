@@ -8,6 +8,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let store = LibraryStore()
     var controller: PanelController!
     var statusItem: NSStatusItem!
+    private var iconWatch: AnyCancellable?
+
+    private func applyStatusIcon() {
+        statusItem.button?.image = NSImage(systemSymbolName: store.settings.menuBarIcon.symbol, accessibilityDescription: AppInfo.name)
+        statusItem.button?.image?.isTemplate = true
+    }
     var settingsWindow: NSWindow?
     private var hotkeyWatch: AnyCancellable?
 
@@ -41,8 +47,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: AppInfo.name)
-        statusItem.button?.image?.isTemplate = true
+        applyStatusIcon()
+        iconWatch = store.$data.map(\.settings.menuBarIcon).removeDuplicates().sink { [weak self] _ in self?.applyStatusIcon() }
         let m = NSMenu(); m.delegate = self
         statusItem.menu = m
     }

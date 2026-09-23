@@ -43,6 +43,8 @@ final class LibraryStore: ObservableObject {
     @Published var primary: MediaItem?
     @Published var isIndexing = false
     @Published var dragging = false
+    /// Rozwinięte menu kontekstowe/rozwijane z panelu: jego lista wystaje poza okno, więc kursor „poza panelem” nie może go zwinąć.
+    @Published var menuTracking = false
     @Published var prompt: PromptRequest?
     @Published var lastError: String?
     @Published var notice: String?
@@ -125,17 +127,52 @@ final class LibraryStore: ObservableObject {
         return find(sidebar.flatMap(\.entries))
     }
 
-    /// Miejsca, do których można przypiąć notatkę (kolekcje, foldery, podfoldery) — z nazwami jak w sidebarze.
-    var noteScopeChoices: [(category: CategoryID, title: String)] {
-        var out: [(CategoryID, String)] = []
-        func walk(_ es: [SidebarEntry], _ prefix: String) {
-            for e in es {
-                if NoteItem.canScope(e.category) { out.append((e.category, prefix + e.title)) }
-                walk(e.children, NoteItem.canScope(e.category) ? prefix + e.title + " › " : prefix)
+    /// Miejsca, do których można przypiąć notatkę, pogrupowane jak w sidebarze (Typ / Foldery / Kolekcje…).
+    var noteScopeGroups: [(title: String, choices: [(category: CategoryID, title: String)])] {
+        var groups: [(String, [(CategoryID, String)])] = []
+        for sec in sidebar {
+            var out: [(CategoryID, String)] = []
+            func walk(_ es: [SidebarEntry], _ prefix: String) {
+                for e in es {
+                    let ok = NoteItem.canScope(e.category)
+                    if ok { out.append((e.category, prefix + e.title)) }
+                    walk(e.children, ok ? prefix + e.title + " › " : prefix)
+                }
             }
+            walk(sec.entries, "")
+            if !out.isEmpty { groups.append((sec.title ?? L("Inne", "Other"), out)) }
         }
-        walk(sidebar.flatMap(\.entries), "")
-        return out
+        return groups
+    }
+
+    /// Upuszczenie notatki (przeciągniętej z panelu) na pozycję sidebaru: przypina ją tam; „Wszystko” = globalna.
+    func dropNote(_ payloads: [String], onto c: CategoryID) -> Bool {
+        var moved = false
+        for p in payloads where p.hasPrefix(Self.notePayloadPrefix) {
+            guard let id = UUID(uuidString: String(p.dropFirst(Self.notePayloadPrefix.count))) else { continue }
+            if NoteItem.canScope(c) { updateNote(id) { $0.scope = c }; moved = true }
+            else if c == .all { updateNote(id) { $0.scope = nil }; moved = true }
+        }
+        return moved
+    }
+    static let notePayloadPrefix = "handy-note:"
+
+    // MARK: import z Final Cut Pro (.fcpxml / .fcpxmld)
+    /// Czyta ścieżki plików z eksportu XML i zakłada z nich kolekcję (nazwa = projekt). Pliki spoza indeksu dochodzą jako pojedyncze pliki.
+    @discardableResult func importFCPXML(_ url: URL) -> Bool {
+        guard let r = FCPXMLImport.read(url) else {
+            notice = L("Nie umiem odczytać tego pliku XML.", "I can't read this XML file."); return false
+        }
+        guard !r.existing.isEmpty else {
+            notice = L("W „\(r.name)” nie znalazłem żadnych plików leżących na dysku\(r.missing > 0 ? " (\(r.missing) ścieżek wskazuje na miejsca, których nie ma)" : "").",
+                       "I found no files on disk in “\(r.name)”\(r.missing > 0 ? " (\(r.missing) paths point to places that don't exist)" : "").")
+            return false
+        }
+        addFiles(r.existing.map { URL(fileURLWithPath: $0) })
+        newCollection(name: r.name, paths: r.existing)
+        notice = L("Zaimportowano „\(r.name)”: \(r.existing.count) plików w nowej kolekcji\(r.missing > 0 ? ", \(r.missing) nie ma na dysku" : "").",
+                   "Imported “\(r.name)”: \(r.existing.count) files in a new collection\(r.missing > 0 ? ", \(r.missing) missing on disk" : "").")
+        return true
     }
 
     func addNote(_ text: String) {
@@ -201,7 +238,7 @@ final class LibraryStore: ObservableObject {
     }
 
     /// Prompt lub komunikat otwarty albo przeciąganie w toku: panel nie może się zwinąć.
-    var holdsPanelOpen: Bool { dragging || prompt != nil || notice != nil }
+    var holdsPanelOpen: Bool { dragging || menuTracking || prompt != nil || notice != nil }
 
     func item(_ path: String) -> MediaItem? { items.first { $0.path == path } }
     func isFavorite(_ i: MediaItem) -> Bool { equivalents([i.path]).contains { org.favorites.contains($0) } }
@@ -298,7 +335,8 @@ final class LibraryStore: ObservableObject {
         for u in urls {
             var isDir: ObjCBool = false
             guard FileManager.default.fileExists(atPath: u.path, isDirectory: &isDir) else { continue }
-            if u.pathExtension.lowercased() == "fcpbundle" { addSource(url: u, kind: .fcpLibrary); added = true }
+            if FCPXMLImport.isFCPXML(u) { importFCPXML(u); added = true }
+            else if u.pathExtension.lowercased() == "fcpbundle" { addSource(url: u, kind: .fcpLibrary); added = true }
             else if isDir.boolValue { addSource(url: u, kind: .folder); added = true }
             else { files.append(u) }
         }

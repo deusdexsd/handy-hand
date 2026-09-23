@@ -52,13 +52,22 @@ private struct NoteRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(alignment: .top, spacing: 4) {
+                Image(systemName: "line.3.horizontal").font(.system(size: 10)).foregroundStyle(.tertiary).padding(.top, 3)
+                    .draggable(LibraryStore.notePayloadPrefix + note.id.uuidString) {
+                        Text(note.text).font(.system(size: 12)).lineLimit(2).padding(6).frame(maxWidth: 180, alignment: .leading)
+                            .background(RoundedRectangle(cornerRadius: 6).fill(.regularMaterial))
+                    }
+                    .help(L("Przeciągnij na kolekcję, folder lub typ w lewym panelu", "Drag onto a collection, folder or type in the left sidebar"))
                 TextField("", text: Binding(get: { note.text }, set: { t in store.updateNote(note.id) { $0.text = t } }), axis: .vertical)
                     .textFieldStyle(.plain).font(.system(size: 12))
                 Menu {
                     Button(L("Globalna (wszędzie)", "Global (everywhere)")) { store.updateNote(note.id) { $0.scope = nil } }
-                    Divider()
-                    ForEach(Array(store.noteScopeChoices.enumerated()), id: \.offset) { _, ch in
-                        Button(ch.title) { store.updateNote(note.id) { $0.scope = ch.category } }
+                    ForEach(Array(store.noteScopeGroups.enumerated()), id: \.offset) { _, g in
+                        Menu(g.title) {
+                            ForEach(Array(g.choices.enumerated()), id: \.offset) { _, ch in
+                                Button(ch.title) { store.updateNote(note.id) { $0.scope = ch.category } }
+                            }
+                        }
                     }
                 } label: { Image(systemName: "folder.badge.plus").font(.system(size: 11)).foregroundStyle(.secondary) }
                     .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
