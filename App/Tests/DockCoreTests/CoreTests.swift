@@ -649,12 +649,14 @@ final class IndexerTests: XCTestCase {
         <asset id="r1" name="A"><media-rep kind="original-media" src="\(enc)"/></asset>
         <asset id="r2" name="B" src="file:///nie/ma/mnie.wav"/>
         <asset id="r3" name="dup"><media-rep src="\(enc)"/></asset></resources>
-        <library><event name="Event X"><project name="Projekt Alfa"/></event></library></fcpxml>
+        <library><event name="Event X"><project name="Projekt Alfa"><sequence><spine><asset-clip ref="r1" name="A"><keyword start="0s" duration="1s" value="wywiad, b-roll"/><rating value="favorite"/></asset-clip></spine></sequence></project></event></library></fcpxml>
         """
         let r = try XCTUnwrap(FCPXMLImport.parse(Data(xml.utf8), fallbackName: "plik"))
         XCTAssertEqual(r.name, "Projekt Alfa")
         XCTAssertEqual(r.existing, [PathUtil.canonical(real.path)])       // duplikat złączony
         XCTAssertEqual(r.missing, 1)
+        XCTAssertEqual(r.tags[PathUtil.canonical(real.path)], ["wywiad", "b-roll"])   // słowa kluczowe FCP → tagi
+        XCTAssertEqual(r.favorites, [PathUtil.canonical(real.path)])                    // rating „favorite” → ulubione
         XCTAssertTrue(FCPXMLImport.isFCPXML(URL(fileURLWithPath: "/a/b.fcpxmld")))
         XCTAssertEqual(AppSettings().menuBarIcon, .paw); XCTAssertEqual(MenuBarIcon.allCases.count, 5)
         try? FileManager.default.removeItem(at: tmp)

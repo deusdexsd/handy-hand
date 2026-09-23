@@ -10,8 +10,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var statusItem: NSStatusItem!
     private var iconWatch: AnyCancellable?
 
-    private func applyStatusIcon() {
-        statusItem.button?.image = NSImage(systemSymbolName: store.settings.menuBarIcon.symbol, accessibilityDescription: AppInfo.name)
+    private func applyStatusIcon(_ icon: MenuBarIcon? = nil) {
+        statusItem.button?.image = NSImage(systemSymbolName: (icon ?? store.settings.menuBarIcon).symbol, accessibilityDescription: AppInfo.name)
         statusItem.button?.image?.isTemplate = true
     }
     var settingsWindow: NSWindow?
@@ -48,9 +48,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         applyStatusIcon()
-        iconWatch = store.$data.map(\.settings.menuBarIcon).removeDuplicates().sink { [weak self] _ in self?.applyStatusIcon() }
-        let m = NSMenu(); m.delegate = self
-        statusItem.menu = m
+        iconWatch = store.$data.map(\.settings.menuBarIcon).removeDuplicates().sink { [weak self] icon in self?.applyStatusIcon(icon) }
+        // Lewy klik na ikonie otwiera Ustawienia, prawy pokazuje menu (Tryb panelu, Zakończ…).
+        let m = NSMenu(); m.delegate = self; statusMenu = m
+        statusItem.button?.target = self
+        statusItem.button?.action = #selector(statusClicked(_:))
+        statusItem.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
+    }
+
+    private var statusMenu: NSMenu?
+
+    @objc private func statusClicked(_ sender: Any?) {
+        if NSApp.currentEvent?.type == .rightMouseUp || NSApp.currentEvent?.modifierFlags.contains(.control) == true {
+            statusItem.menu = statusMenu
+            statusItem.button?.performClick(nil)
+            statusItem.menu = nil
+        } else { showSettings() }
     }
 
     func applicationWillTerminate(_ n: Notification) { store.flush() }
@@ -102,9 +115,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             w.title = L("Ustawienia", "Settings"); w.isReleasedWhenClosed = false
             w.contentView = NSHostingView(rootView: SettingsView(store: store))
             settingsWindow = w
-            // Ustawienia nie mogą zasłaniać panelu Handy (rozwija się u góry / przy krawędzi): otwieramy je w dolnej części ekranu.
-            if let f = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame {
-                w.setFrameOrigin(NSPoint(x: f.midX - w.frame.width / 2, y: f.minY + 24))
+                        if let f = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame {
+                // Na środku ekranu, ale trochę niżej niż środek (górna część należy do panelu Handy).
+                w.setFrameOrigin(NSPoint(x: f.midX - w.frame.width / 2, y: f.midY - w.frame.height / 2 - f.height * 0.08))
             } else { w.center() }
         }
         NSApp.activate(ignoringOtherApps: true)

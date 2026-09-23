@@ -116,7 +116,7 @@ final class LibraryStore: ObservableObject {
     }
 
     // MARK: notatki
-    var visibleNotes: [NoteItem] { NoteItem.visible(org.notes, category: config.category) }
+    var visibleNotes: [NoteItem] { settings.notesShowAll ? org.notes : NoteItem.visible(org.notes, category: config.category) }
 
     /// Tytuł dowolnej kategorii z sidebaru (do podpisów notatek).
     func title(for c: CategoryID) -> String? {
@@ -170,8 +170,10 @@ final class LibraryStore: ObservableObject {
         }
         addFiles(r.existing.map { URL(fileURLWithPath: $0) })
         newCollection(name: r.name, paths: r.existing)
-        notice = L("Zaimportowano „\(r.name)”: \(r.existing.count) plików w nowej kolekcji\(r.missing > 0 ? ", \(r.missing) nie ma na dysku" : "").",
-                   "Imported “\(r.name)”: \(r.existing.count) files in a new collection\(r.missing > 0 ? ", \(r.missing) missing on disk" : "").")
+        for (p, ks) in r.tags { for k in ks { addTag(k, to: [p]) } }
+        for p in r.favorites { data.org.favorites.formUnion(equivalents([p])) }
+        notice = L("Zaimportowano „\(r.name)”: \(r.existing.count) plików w nowej kolekcji, \(r.tags.values.reduce(0) { $0 + $1.count }) tagów ze słów kluczowych FCP, \(r.favorites.count) ulubionych\(r.missing > 0 ? ". Brak na dysku: \(r.missing)" : "").",
+                   "Imported “\(r.name)”: \(r.existing.count) files in a new collection, \(r.tags.values.reduce(0) { $0 + $1.count }) tags from FCP keywords, \(r.favorites.count) favorites\(r.missing > 0 ? ". Missing on disk: \(r.missing)" : "").")
         return true
     }
 

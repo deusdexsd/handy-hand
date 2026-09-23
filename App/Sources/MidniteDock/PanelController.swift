@@ -179,7 +179,14 @@ final class PanelController: NSObject {
             MainActor.assumeIsolated { if let self, self.expanded { self.store.menuTracking = true } }
         }
         NotificationCenter.default.addObserver(forName: NSMenu.didEndTrackingNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { guard let self, self.store.menuTracking else { return }; self.store.menuTracking = false; self.updateHover(); self.apply(animated: true) }
+            MainActor.assumeIsolated {
+                guard let self, self.store.menuTracking else { return }
+                // Wybór z listy, która wystawała poza panel, kończy się kursorem poza panelem: nie zwijamy go od razu,
+                // tylko trzymamy otwarty do powrotu kursora (albo 4 s).
+                self.store.menuTracking = false; self.holdAfterMenu = true; self.collapseWork?.cancel(); self.collapseWork = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in self?.holdAfterMenu = false; self?.updateHover(); self?.apply(animated: true) }
+                self.apply(animated: true)
+            }
         }
         store.$dragging.removeDuplicates().sink { [weak self] _ in DispatchQueue.main.async { self?.apply(animated: true) } }.store(in: &bag)
         store.$prompt.sink { [weak self] p in DispatchQueue.main.async { if p != nil { self?.body.makeKey() }; self?.apply(animated: true) } }.store(in: &bag)
@@ -239,8 +246,10 @@ final class PanelController: NSObject {
     private func forceCollapse() { pinnedOnce = false; hovering = false; apply(animated: true) }
 
     // MARK: tryby
+    private var holdAfterMenu = false
+
     private func shouldExpand() -> Bool {
-        if pinnedOnce { return true }
+        if pinnedOnce || holdAfterMenu { return true }
         switch store.settings.mode {
         case .pinned: return true
         case .followApp: return frontmostWatched || hovering || store.holdsPanelOpen
@@ -379,6 +388,7 @@ final class PanelController: NSObject {
         updateGlow()
         let inside = hotZone().contains(NSEvent.mouseLocation)
         if inside {
+            holdAfterMenu = false
             collapseWork?.cancel(); collapseWork = nil
             if !hovering { hovering = true; apply(animated: true) }
         } else if hovering, collapseWork == nil {
