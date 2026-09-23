@@ -30,6 +30,30 @@ final class DockPanel: NSPanel {
     @objc func paste(_ sender: Any?) { if let tv = firstResponder as? NSTextView { tv.paste(sender) } else { _ = onKey?(.paste) } }
     override func selectAll(_ sender: Any?) { if let tv = firstResponder as? NSTextView { tv.selectAll(sender) } else { _ = onKey?(.selectAll) } }
 
+    /// Standardowe skróty edycji (⌘X/⌘C/⌘V/⌘A/⌘Z/⇧⌘Z). Pole tekstowe w macOS NIE obsługuje ich samo — polega na pozycjach
+    /// menu „Edycja" z ich skrótami, a ta aplikacja (pasek menu, panel bez menu) go nie miała; stąd ⌘C/⌘V/⌘X w wyszukiwarce
+    /// nie robiły nic. Wysyłamy odpowiednią akcję w dół łańcucha respondera: pole tekstowe, jeśli ma fokus, obsłuży ją samo,
+    /// a poza polem trafi do metod copy/paste/selectAll tego okna (pliki).
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.type == .keyDown {
+            let mods = event.modifierFlags.intersection([.command, .control, .option, .shift])
+            let ch = event.charactersIgnoringModifiers?.lowercased()
+            var sel: Selector?
+            if mods == .command {
+                switch ch {
+                case "x": sel = Selector(("cut:"))
+                case "c": sel = Selector(("copy:"))
+                case "v": sel = Selector(("paste:"))
+                case "a": sel = Selector(("selectAll:"))
+                case "z": sel = Selector(("undo:"))
+                default: break
+                }
+            } else if mods == [.command, .shift], ch == "z" { sel = Selector(("redo:")) }
+            if let sel, (firstResponder ?? self).tryToPerform(sel, with: self) { return true }
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
     /// Klawisze przechwytujemy przed SwiftUI (ScrollView sam by je zjadł), ale nie wtedy, gdy trwa pisanie w polu tekstowym.
     override func sendEvent(_ event: NSEvent) {
         // Esc w polu tekstowym (np. wyszukiwarce) wychodzi z pisania, tekst zostaje, a klawisze 1-0, strzałki i spacja znów działają.
@@ -439,6 +463,9 @@ enum SnapshotRunner {
         store.select(category: .klass(.sfx))
         await shot("04g-sfx-scale-dark")
         store.select(category: .all)
+        store.select(category: .all); store.config.viewMode = .minimal; store.settings.tileScale = 1.3
+        await shot("04k-minimal-dark")
+        store.config.viewMode = .grid; store.settings.tileScale = 1
         store.select(category: .all); store.config.viewMode = .list
         await shot("05-list-dark")
         store.config.viewMode = .grid; store.settings.categoryLayout = .chips
@@ -775,6 +802,26 @@ enum SelfTest {
                 let itemsBeforePasteInField = store.items.count
                 let pasteInFieldOK = NSApp.sendAction(Selector(("paste:")), to: nil, from: nil); await wait(0.2)
                 print("SELF 32m ⌘V w polu przez sendAction: dostarczone=\(pasteInFieldOK) tekst wklejony=\(store.search.contains("wklejony-tekst")) plików NIE dodano=\(store.items.count == itemsBeforePasteInField)")
+                store.search = ""; NSPasteboard.general.clearContents()
+
+                // Prawdziwa ścieżka: zsyntetyzowane zdarzenie klawiatury przez NSApp.sendEvent (⌘X / ⌘C / ⌘V w polu).
+                func cmdKey(_ ch: String, code: UInt16) {
+                    if let e = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .command, timestamp: ProcessInfo.processInfo.systemUptime,
+                                                windowNumber: panel.windowNumber, context: nil, characters: ch, charactersIgnoringModifiers: ch, isARepeat: false, keyCode: code) {
+                        NSApp.sendEvent(e)
+                    }
+                }
+                store.search = "abc"; panel.makeFirstResponder(field); await wait(0.2)
+                (panel.firstResponder as? NSTextView)?.selectAll(nil)
+                NSPasteboard.general.clearContents()
+                cmdKey("x", code: 7); await wait(0.2)
+                let cutText = NSPasteboard.general.string(forType: .string)
+                print("SELF 32n ⌘X w polu (NSApp.sendEvent) key=\(panel.isKeyWindow) fr=\(String(describing: type(of: panel.firstResponder))): schowek=\(cutText ?? "nil") pole puste=\(store.search.isEmpty)")
+                cmdKey("v", code: 9); await wait(0.2)
+                print("SELF 32o ⌘V w polu (NSApp.sendEvent): pole=\(store.search)")
+                (panel.firstResponder as? NSTextView)?.selectAll(nil)
+                NSPasteboard.general.clearContents(); cmdKey("c", code: 8); await wait(0.2)
+                print("SELF 32p ⌘C w polu (NSApp.sendEvent): schowek=\(NSPasteboard.general.string(forType: .string) ?? "nil")")
                 store.search = ""; NSPasteboard.general.clearContents()
             } else { print("SELF 32 brak pola wyszukiwania w panelu") }
         }

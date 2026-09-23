@@ -34,9 +34,11 @@ struct ContentArea: View {
         contentBody(vis)
             .background(GeometryReader { g in
                 Color.clear
-                    .onAppear { store.gridColumns = GridNavigation.columns(width: g.size.width) }
-                    .onChange(of: g.size.width) { _, w in store.gridColumns = GridNavigation.columns(width: w) }
+                    .onAppear { store.gridColumns = GridNavigation.columns(width: g.size.width, minItem: 148 * store.settings.tileScale) }
+                    .onChange(of: g.size.width) { _, w in store.gridColumns = GridNavigation.columns(width: w, minItem: 148 * store.settings.tileScale) }
+                    .onChange(of: store.settings.tileScale) { _, sc in store.gridColumns = GridNavigation.columns(width: g.size.width, minItem: 148 * sc) }
             })
+            .overlay(alignment: .bottomTrailing) { if !store.items.isEmpty { SizeSlider(store: store) } }
             .dropDestination(for: URL.self) { urls, _ in store.addDropped(urls) }   // foldery i pliki z Findera
     }
 
@@ -60,13 +62,13 @@ struct ContentArea: View {
                 } else {
                     EmptyState(icon: "tray", title: L("Ta kategoria jest pusta", "This category is empty"), text: L("Przeciągnij tu pliki z panelu albo wybierz inną kategorię.", "Drop files here from the panel, or choose another category."))
                 }
-            } else if store.config.viewMode == .grid {
+            } else if store.config.viewMode != .list {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        if store.settings.minimalistGrid {
+                        if store.config.viewMode == .minimal {
                             MasonryGrid(store: store, waveforms: store.waveforms, thumbs: store.thumbnails, items: vis)
                         } else {
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 148, maximum: 200), spacing: 10)], spacing: 10) {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 148 * store.settings.tileScale, maximum: 200 * store.settings.tileScale), spacing: 10)], spacing: 10) {
                                 ForEach(vis) { TileView(store: store, waveforms: store.waveforms, thumbs: store.thumbnails, item: $0).id($0.path) }
                             }.padding(.horizontal, 10).padding(.bottom, 10)
                         }
@@ -85,6 +87,23 @@ struct ContentArea: View {
                 }
             }
         }
+    }
+}
+
+/// Suwak wielkości elementów (działa w liście, siatce i widoku minimalistycznym) — mała kapsuła w rogu, jak w Finderze.
+struct SizeSlider: View {
+    @ObservedObject var store: LibraryStore
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "square.grid.3x3").font(.system(size: 8)).foregroundStyle(.secondary)
+            Slider(value: $store.data.settings.tileScale, in: 0.6...1.8).controlSize(.mini).frame(width: 84)
+            Image(systemName: "square.grid.2x2").font(.system(size: 11)).foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 9).padding(.vertical, 5)
+        .background(.regularMaterial, in: Capsule())
+        .padding(10)
+        .help(L("Rozmiar elementów", "Item size"))
+        .accessibilityLabel(L("Rozmiar elementów", "Item size"))
     }
 }
 

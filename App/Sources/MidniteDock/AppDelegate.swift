@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             store.addSource(url: d.appendingPathComponent("DevLibrary.fcpbundle"), kind: .fcpLibrary)
         }
         if ProcessInfo.processInfo.environment["MIDNITEDOCK_LANG"] == "en" { store.data.settings.language = .en }   // podgląd wersji angielskiej (dev)
+        installEditMenu()
         store.openSettings = { [weak self] in self?.showSettings() }
         controller = PanelController(store: store)
         controller.show()
@@ -47,6 +48,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationWillTerminate(_ n: Notification) { store.flush() }
+
+    /// Menu główne z pozycjami „Edycja": bez niego pola tekstowe (też w oknie Ustawień) nie reagują na ⌘X/⌘C/⌘V/⌘A/⌘Z.
+    /// Apka jest bez ikony w Docku, więc menu nie jest widoczne — liczą się tylko skróty klawiszowe.
+    private func installEditMenu() {
+        let main = NSMenu()
+        let appItem = NSMenuItem(); appItem.submenu = NSMenu(); main.addItem(appItem)
+        let editItem = NSMenuItem(); main.addItem(editItem)
+        let edit = NSMenu(title: L("Edycja", "Edit"))
+        edit.addItem(withTitle: L("Cofnij", "Undo"), action: Selector(("undo:")), keyEquivalent: "z")
+        let redo = edit.addItem(withTitle: L("Ponów", "Redo"), action: Selector(("redo:")), keyEquivalent: "z"); redo.keyEquivalentModifierMask = [.command, .shift]
+        edit.addItem(.separator())
+        edit.addItem(withTitle: L("Wytnij", "Cut"), action: Selector(("cut:")), keyEquivalent: "x")
+        edit.addItem(withTitle: L("Kopiuj", "Copy"), action: Selector(("copy:")), keyEquivalent: "c")
+        edit.addItem(withTitle: L("Wklej", "Paste"), action: Selector(("paste:")), keyEquivalent: "v")
+        edit.addItem(withTitle: L("Zaznacz wszystko", "Select All"), action: Selector(("selectAll:")), keyEquivalent: "a")
+        editItem.submenu = edit
+        NSApp.mainMenu = main
+    }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()

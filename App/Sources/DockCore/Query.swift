@@ -1,6 +1,6 @@
 import Foundation
 
-public enum ViewMode: String, Codable, Sendable, CaseIterable { case grid, list }
+public enum ViewMode: String, Codable, Sendable, CaseIterable { case list, grid, minimal }
 public enum SortKey: String, Codable, Sendable, CaseIterable {
     case name, duration, dateAdded, dateModified
     public var label: String {

@@ -54,35 +54,90 @@ struct DockRootView: View {
 struct ToolbarView: View {
     @ObservedObject var store: LibraryStore
     @Environment(\.dockAccent) private var accent
+    @State private var cmdHeld = false
+    @State private var flagsMonitor: Any?
+    @State private var dragID: String?
+    @State private var dragStart = 0
+    @State private var dragX: CGFloat = 0
+    private let slot: CGFloat = 32      // 26 pt ikona + 6 pt odstęp
 
     var body: some View {
+        let order = ToolbarItemID.sanitized(store.settings.toolbarOrder)
         HStack(spacing: 6) {
+            Text(store.categoryTitle).font(.system(size: 13, weight: .semibold)).lineLimit(1).frame(minWidth: 70, alignment: .leading)
+            SearchField(text: $store.search, placeholder: L("Szukaj w: \(store.categoryTitle)", "Search in: \(store.categoryTitle)"))
+            ForEach(order, id: \.self) { id in
+                item(id)
+                    .allowsHitTesting(!cmdHeld)
+                    .overlay { if cmdHeld { reorderHandle(id, order) } }
+                    .offset(x: dragID == id ? dragX : 0)
+                    .scaleEffect(dragID == id ? 1.12 : 1)
+                    .opacity(cmdHeld && dragID != id ? 0.8 : 1)
+                    .zIndex(dragID == id ? 1 : 0)
+            }
+        }
+        .padding(.horizontal, 10).padding(.vertical, 8)
+        .animation(.spring(response: 0.25, dampingFraction: 0.9), value: store.settings.toolbarOrder)
+        .onAppear {
+            flagsMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { e in
+                let held = e.modifierFlags.contains(.command)
+                if held != cmdHeld { cmdHeld = held; if !held { dragID = nil; dragX = 0 } }
+                return e
+            }
+        }
+        .onDisappear { if let m = flagsMonitor { NSEvent.removeMonitor(m); flagsMonitor = nil }; cmdHeld = false; dragID = nil }
+    }
+
+    /// Przeciąganie z wciśniętym ⌘ (jak w pasku menu macOS): ikona jedzie za kursorem, sąsiedzi robią jej miejsce.
+    private func reorderHandle(_ id: String, _ order: [String]) -> some View {
+        Color.clear.contentShape(Rectangle())
+            .help(L("Przeciągnij, żeby zmienić kolejność", "Drag to reorder"))
+            .gesture(DragGesture(minimumDistance: 2)
+                .onChanged { v in
+                    if dragID != id { dragID = id; dragStart = order.firstIndex(of: id) ?? 0 }
+                    let cur = ToolbarItemID.sanitized(store.settings.toolbarOrder)
+                    guard let ci = cur.firstIndex(of: id) else { return }
+                    let target = min(cur.count - 1, max(0, dragStart + Int((v.translation.width / slot).rounded())))
+                    if target != ci {
+                        var n = cur; n.remove(at: ci); n.insert(id, at: target)
+                        store.settings.toolbarOrder = n
+                    }
+                    let now = ToolbarItemID.sanitized(store.settings.toolbarOrder).firstIndex(of: id) ?? ci
+                    dragX = v.translation.width - CGFloat(now - dragStart) * slot
+                }
+                .onEnded { _ in withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) { dragID = nil; dragX = 0 } })
+    }
+
+    @ViewBuilder private func item(_ id: String) -> some View {
+        switch id {
+        case "sidebar":
             iconButton("sidebar.left", L("Pokaż / ukryj pasek kategorii", "Show / hide the category sidebar"), active: !store.settings.sidebarHidden) {
                 store.settings.sidebarHidden.toggle()
             }
-            Text(store.categoryTitle).font(.system(size: 13, weight: .semibold)).lineLimit(1).frame(minWidth: 70, alignment: .leading)
-            SearchField(text: $store.search, placeholder: L("Szukaj w: \(store.categoryTitle)", "Search in: \(store.categoryTitle)"))
+        case "metadata":
             iconButton(store.settings.searchMetadata ? "tag.fill" : "tag",
                        L("Szukaj też w tagach, rozszerzeniu i wydarzeniu FCP (nie tylko w nazwie)", "Also search tags, extension and FCP event (not just the name)"),
                        active: store.settings.searchMetadata) { store.settings.searchMetadata.toggle() }
-            iconButton(store.settings.minimalistGrid ? "square.fill" : "square",
-                       L("Widok minimalistyczny (bez nazw pod kaflami)", "Minimalist view (no names under tiles)"),
-                       active: store.settings.minimalistGrid) { store.settings.minimalistGrid.toggle() }
-            FilterMenu(store: store)
-            SortMenu(store: store)
+        case "filter": FilterMenu(store: store)
+        case "sort": SortMenu(store: store)
+        case "favorites":
             iconButton(store.settings.favoritesFirst ? "star.fill" : "star",
                        L("Ulubione zawsze na górze listy", "Favorites always on top"),
                        active: store.settings.favoritesFirst) { store.settings.favoritesFirst.toggle() }
-            PresetMenu(store: store)
-            iconButton(store.config.viewMode == .grid ? "square.grid.2x2" : "list.bullet", L("Przełącz siatkę i listę", "Toggle grid and list")) {
-                store.config.viewMode = store.config.viewMode == .grid ? .list : .grid
+        case "presets": PresetMenu(store: store)
+        case "view":
+            let mode = store.config.viewMode
+            iconButton(mode == .list ? "list.bullet" : (mode == .grid ? "square.grid.2x2" : "rectangle.3.group"),
+                       L("Widok: lista / siatka / minimalistyczny", "View: list / grid / minimalist")) {
+                store.config.viewMode = mode == .list ? .grid : (mode == .grid ? .minimal : .list)
             }
+        case "pin":
             iconButton(store.settings.mode == .pinned ? "pin.fill" : "pin", L("Przypnij panel", "Pin panel"), active: store.settings.mode == .pinned) {
                 store.settings.mode = store.settings.mode == .pinned ? .hover : .pinned
             }
+        default:
             iconButton("gearshape", L("Ustawienia", "Settings")) { store.openSettings?() }
         }
-        .padding(.horizontal, 10).padding(.vertical, 8)
     }
 
     func iconButton(_ symbol: String, _ label: String, active: Bool = false, _ action: @escaping () -> Void) -> some View {

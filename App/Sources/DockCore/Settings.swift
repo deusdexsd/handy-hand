@@ -69,8 +69,12 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var categoryLayout: CategoryLayout = .sidebar
     /// Pasek kategorii (Ulubione/Typ/Foldery/Kolekcje) całkiem schowany — ikonka w toolbarze, reszta panelu zostaje.
     public var sidebarHidden: Bool = false
-    /// Widok siatki bez nazwy i wymiarów pod kaflem — tylko obraz/waveform.
-    public var minimalistGrid: Bool = false
+    /// Widok minimalistyczny bez nazw przy dźwiękach (obrazy i wideo i tak nie mają podpisów).
+    public var minimalistHideAudioNames: Bool = true
+    /// Rozmiar elementów we wszystkich widokach (suwak): 0.6…1.8, 1 = domyślny.
+    public var tileScale: Double = 1
+    /// Kolejność ikon w toolbarze (przeciąganie z ⌘). Puste/nieznane wpisy uzupełnia widok.
+    public var toolbarOrder: [String] = ToolbarItemID.defaultOrder
     public var accent: AccentChoice = .system
     public var sourceTints: Bool = false
     public var waveformScaleSeconds: Double = 5
@@ -104,7 +108,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var searchMetadata: Bool = false
     public init() {}
 
-    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, stopPlaybackOnCollapse, waveformAutoScale, bigMediaPreview, quickKeys, notchEffect, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, sidebarHidden, minimalistGrid, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
+    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, stopPlaybackOnCollapse, waveformAutoScale, bigMediaPreview, quickKeys, notchEffect, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, sidebarHidden, minimalistHideAudioNames, tileScale, toolbarOrder, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
     /// Tolerancyjne dekodowanie: brakujący klucz (np. po aktualizacji) = wartość domyślna, a nie utrata ustawień.
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -116,7 +120,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
         virtualNotch = try c.decodeIfPresent(VirtualNotchMode.self, forKey: .virtualNotch) ?? def.virtualNotch
         categoryLayout = try c.decodeIfPresent(CategoryLayout.self, forKey: .categoryLayout) ?? def.categoryLayout
         sidebarHidden = try c.decodeIfPresent(Bool.self, forKey: .sidebarHidden) ?? def.sidebarHidden
-        minimalistGrid = try c.decodeIfPresent(Bool.self, forKey: .minimalistGrid) ?? def.minimalistGrid
+        minimalistHideAudioNames = try c.decodeIfPresent(Bool.self, forKey: .minimalistHideAudioNames) ?? def.minimalistHideAudioNames
+        tileScale = min(1.8, max(0.6, try c.decodeIfPresent(Double.self, forKey: .tileScale) ?? def.tileScale))
+        toolbarOrder = ToolbarItemID.sanitized(try c.decodeIfPresent([String].self, forKey: .toolbarOrder) ?? def.toolbarOrder)
         accent = try c.decodeIfPresent(AccentChoice.self, forKey: .accent) ?? def.accent
         sourceTints = try c.decodeIfPresent(Bool.self, forKey: .sourceTints) ?? def.sourceTints
         waveformScaleSeconds = try c.decodeIfPresent(Double.self, forKey: .waveformScaleSeconds) ?? def.waveformScaleSeconds
@@ -194,5 +200,17 @@ public final class UserDataStore: @unchecked Sendable {
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         let enc = JSONEncoder(); enc.outputFormatting = [.prettyPrinted, .sortedKeys]
         if let d = try? enc.encode(u) { try? d.write(to: url, options: .atomic) }
+    }
+}
+
+/// Ikony toolbaru, które da się przestawiać (⌘ + przeciągnięcie). Pole wyszukiwania i tytuł kategorii zostają na stałe.
+public enum ToolbarItemID {
+    public static let defaultOrder = ["sidebar", "metadata", "filter", "sort", "favorites", "presets", "view", "pin", "settings"]
+    /// Wyrzuca nieznane i zdublowane wpisy, brakujące dokłada na końcu.
+    public static func sanitized(_ order: [String]) -> [String] {
+        var seen = Set<String>(); var out: [String] = []
+        for id in order where defaultOrder.contains(id) && seen.insert(id).inserted { out.append(id) }
+        for id in defaultOrder where !seen.contains(id) { out.append(id) }
+        return out
     }
 }

@@ -95,7 +95,7 @@ struct TileView: View {
                         .accessibilityLabel(fav ? "Usuń z ulubionych" : "Dodaj do ulubionych")
                 }
             }
-            .frame(height: 64)
+            .frame(height: 64 * store.settings.tileScale)
             .clipShape(RoundedRectangle(cornerRadius: 6))
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.name).font(.system(size: 12, weight: .medium)).lineLimit(1).truncationMode(.middle)
@@ -123,7 +123,7 @@ struct TileView: View {
             WaveformLane(item: item, peaks: waveforms.peaks(for: item), scale: store.waveformScale(for: item),
                          shade: store.shade(item), accentPlayed: nil, accent: accent, ticks: true)
         } else if let img = thumbs.image(for: item) {
-            Image(nsImage: img).resizable().scaledToFit().frame(maxWidth: .infinity).frame(height: 64).background(Color.black.opacity(0.22))
+            Image(nsImage: img).resizable().scaledToFit().frame(maxWidth: .infinity).frame(height: 64 * store.settings.tileScale).background(Color.black.opacity(0.22))
                 .overlay(alignment: .bottomTrailing) {
                     if item.kind == .video { Text(Fmt.duration(item.duration)).font(.system(size: 10, weight: .medium)).monospacedDigit()
                         .padding(.horizontal, 5).padding(.vertical, 1.5).background(.ultraThinMaterial, in: Capsule()).padding(4) }
@@ -153,7 +153,8 @@ struct MasonryGrid: View {
 
     var body: some View {
         let cols = max(1, store.gridColumns)
-        let distributed = Self.distribute(items, into: cols)
+        let hs = items.map { MasonryLayout.estimatedHeight(isAudio: $0.kind == .audio, pixelWidth: $0.pixelWidth, pixelHeight: $0.pixelHeight, scale: store.settings.tileScale) }
+        let distributed = MasonryLayout.distribute(heights: hs, columns: cols).map { $0.map { items[$0] } }
         HStack(alignment: .top, spacing: 10) {
             ForEach(0..<cols, id: \.self) { c in
                 VStack(spacing: 10) {
@@ -166,23 +167,6 @@ struct MasonryGrid: View {
         .padding(.horizontal, 10).padding(.bottom, 10)
     }
 
-    /// Jak w Pintereście: każdy kolejny element trafia do kolumny, która aktualnie ma najmniej wysokości.
-    private static func distribute(_ items: [MediaItem], into cols: Int) -> [[MediaItem]] {
-        var heights = [Double](repeating: 0, count: cols)
-        var out = Array(repeating: [MediaItem](), count: cols)
-        for item in items {
-            var shortest = 0
-            for i in 1..<cols where heights[i] < heights[shortest] { shortest = i }
-            out[shortest].append(item)
-            heights[shortest] += estimatedHeight(item) + 10
-        }
-        return out
-    }
-
-    static func estimatedHeight(_ item: MediaItem) -> Double {
-        guard item.kind != .audio, let w = item.pixelWidth, let h = item.pixelHeight, w > 0, h > 0 else { return 64 }
-        return min(260, max(70, 160 * Double(h) / Double(w)))
-    }
 }
 
 /// Kafel w widoku minimalistycznym: sam obraz/waveform w naturalnej proporcji, zaokrąglone rogi, bez tła karty
@@ -234,7 +218,12 @@ struct MinimalistTile: View {
         if item.kind == .audio {
             WaveformLane(item: item, peaks: waveforms.peaks(for: item), scale: store.waveformScale(for: item),
                          shade: store.shade(item), accentPlayed: nil, accent: accent, ticks: true)
-                .frame(height: 64).background(Color.primary.opacity(0.08))
+                .frame(height: 64 * store.settings.tileScale).background(Color.primary.opacity(0.08))
+                .overlay(alignment: .bottomLeading) {
+                    if !store.settings.minimalistHideAudioNames {
+                        Text(item.name).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle).padding(.horizontal, 7).padding(.bottom, 4)
+                    }
+                }
         } else if let img = thumbs.image(for: item) {
             Image(nsImage: img).resizable().scaledToFit().frame(maxWidth: .infinity).background(Color.black.opacity(0.22))
                 .overlay(alignment: .bottomTrailing) {
@@ -287,7 +276,7 @@ struct RowView: View {
             Text(item.kind == .image ? "\(item.pixelWidth ?? 0)×\(item.pixelHeight ?? 0)" : Fmt.duration(item.duration)).font(.system(size: 11)).monospacedDigit().foregroundStyle(.secondary).frame(minWidth: 44, alignment: .trailing)
             Text(store.copies(item) > 1 ? "×\(store.copies(item))" : (item.group ?? "")).font(.system(size: 11)).foregroundStyle(.tertiary).lineLimit(1).frame(width: Self.groupWidth, alignment: .leading)
         }
-        .padding(.horizontal, Self.rowPadding).frame(height: 30)
+        .padding(.horizontal, Self.rowPadding).frame(height: 22 + 8 * store.settings.tileScale)
         .background(RoundedRectangle(cornerRadius: 7).fill(Color.primary.opacity(selected ? 0.13 : 0)))
         .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(selected ? accent : .clear, lineWidth: 1.2))
         .scaleEffect(pressed ? 0.985 : 1)

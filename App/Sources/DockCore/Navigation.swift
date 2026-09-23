@@ -31,3 +31,45 @@ public enum ScaleTicks {
         return candidates.first { s / $0 <= Double(maxTicks) } ?? 600
     }
 }
+
+/// Układ „Pinterest”: każdy kolejny element trafia do najkrótszej kolumny. Wspólny dla rysowania i nawigacji strzałkami.
+public enum MasonryLayout {
+    public static let spacing = 10.0
+
+    public static func estimatedHeight(isAudio: Bool, pixelWidth: Int?, pixelHeight: Int?, scale: Double = 1) -> Double {
+        guard !isAudio, let w = pixelWidth, let h = pixelHeight, w > 0, h > 0 else { return 64 * scale }
+        return min(260, max(70, 160 * Double(h) / Double(w))) * scale
+    }
+
+    /// Indeksy elementów w kolumnach (kolejność z góry na dół).
+    public static func distribute(heights: [Double], columns: Int) -> [[Int]] {
+        let cols = max(1, columns)
+        var hs = [Double](repeating: 0, count: cols)
+        var out = Array(repeating: [Int](), count: cols)
+        for (i, h) in heights.enumerated() {
+            var shortest = 0
+            for c in 1..<cols where hs[c] < hs[shortest] { shortest = c }
+            out[shortest].append(i)
+            hs[shortest] += h + spacing
+        }
+        return out
+    }
+
+    /// Strzałki w układzie kolumnowym: góra/dół w obrębie kolumny, lewo/prawo do sąsiedniej kolumny (element na podobnej wysokości).
+    public static func move(from index: Int?, heights: [Double], columns: Int, _ dir: GridNavigation.Direction) -> Int? {
+        guard !heights.isEmpty else { return nil }
+        guard let i = index, heights.indices.contains(i) else { return 0 }
+        let layout = distribute(heights: heights, columns: columns)
+        guard let c = layout.firstIndex(where: { $0.contains(i) }), let pos = layout[c].firstIndex(of: i) else { return i }
+        switch dir {
+        case .up: return pos > 0 ? layout[c][pos - 1] : i
+        case .down: return pos + 1 < layout[c].count ? layout[c][pos + 1] : i
+        case .left, .right:
+            let nc = dir == .left ? c - 1 : c + 1
+            guard layout.indices.contains(nc), !layout[nc].isEmpty else { return i }
+            func center(_ col: [Int], _ p: Int) -> Double { col[..<p].reduce(0) { $0 + heights[$1] + spacing } + heights[col[p]] / 2 }
+            let y = center(layout[c], pos)
+            return layout[nc].indices.min { abs(center(layout[nc], $0) - y) < abs(center(layout[nc], $1) - y) }.map { layout[nc][$0] } ?? i
+        }
+    }
+}

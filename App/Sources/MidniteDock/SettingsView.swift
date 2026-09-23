@@ -145,9 +145,16 @@ struct AppearanceTab: View {
             Section(L("Źródła", "Sources")) {
                 Toggle(L("Subtelne kolory ikon źródeł w sidebarze", "Subtle source-icon colors in the sidebar"), isOn: $store.data.settings.sourceTints)
             }
-            Section(L("Siatka", "Grid")) {
-                Toggle(L("Widok minimalistyczny (bez nazw i wymiarów pod kaflem)", "Minimalist view (no names or dimensions under tiles)"), isOn: $store.data.settings.minimalistGrid)
-                Text(L("Zostaje sam obraz albo waveform — czyściej, bliżej siatki w stylu Pinteresta.", "Just the image or waveform stays — cleaner, closer to a Pinterest-style grid."))
+            Section(L("Widok elementów", "Item view")) {
+                HStack {
+                    Text(L("Rozmiar elementów", "Item size"))
+                    Slider(value: $store.data.settings.tileScale, in: 0.6...1.8)
+                    Button(L("Domyślny", "Default")) { store.data.settings.tileScale = 1 }.disabled(store.data.settings.tileScale == 1)
+                }
+                Toggle(L("Widok minimalistyczny: ukryj nazwy przy dźwiękach", "Minimalist view: hide names on sounds"), isOn: $store.data.settings.minimalistHideAudioNames)
+                    .toggleStyle(.checkbox)
+                Text(L("Widok minimalistyczny to trzeci tryb (lista / siatka / minimalistyczny) pod jedną ikoną w toolbarze. Zostaje sam obraz albo waveform, jak w siatce Pinteresta. Wyłącz to, jeśli chcesz mieć subtelną nazwę na kaflach z dźwiękiem. Ikony toolbaru przestawisz, przytrzymując ⌘ i przeciągając.",
+                       "Minimalist view is the third mode (list / grid / minimalist) under a single toolbar icon. Only the image or waveform stays, Pinterest-style. Turn this off to get a subtle name on sound tiles. Rearrange toolbar icons by holding ⌘ and dragging."))
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section(L("Notch: reakcja na kursor", "Notch: cursor reaction")) {

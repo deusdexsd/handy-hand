@@ -613,11 +613,28 @@ final class IndexerTests: XCTestCase {
     }
 
     func testSidebarHiddenAndMinimalistGridDefaultsAndDecode() throws {
-        XCTAssertFalse(AppSettings().sidebarHidden); XCTAssertFalse(AppSettings().minimalistGrid)
-        let on = try JSONDecoder().decode(AppSettings.self, from: Data("{\"sidebarHidden\":true,\"minimalistGrid\":true}".utf8))
-        XCTAssertTrue(on.sidebarHidden); XCTAssertTrue(on.minimalistGrid)
+        XCTAssertFalse(AppSettings().sidebarHidden); XCTAssertTrue(AppSettings().minimalistHideAudioNames)
+        let on = try JSONDecoder().decode(AppSettings.self, from: Data("{\"sidebarHidden\":true,\"minimalistHideAudioNames\":false,\"tileScale\":9,\"toolbarOrder\":[\"pin\",\"x\",\"pin\"]}".utf8))
+        XCTAssertTrue(on.sidebarHidden); XCTAssertFalse(on.minimalistHideAudioNames)
+        XCTAssertEqual(on.tileScale, 1.8)                                   // poza zakresem: przycięte
+        XCTAssertEqual(on.toolbarOrder.first, "pin"); XCTAssertEqual(Set(on.toolbarOrder), Set(ToolbarItemID.defaultOrder)); XCTAssertEqual(on.toolbarOrder.count, ToolbarItemID.defaultOrder.count)
         let old = try JSONDecoder().decode(AppSettings.self, from: Data("{\"mode\":\"hover\"}".utf8))     // stary zapis bez tych kluczy
-        XCTAssertFalse(old.sidebarHidden); XCTAssertFalse(old.minimalistGrid)
+        XCTAssertFalse(old.sidebarHidden); XCTAssertTrue(old.minimalistHideAudioNames)
+        XCTAssertEqual(old.tileScale, 1); XCTAssertEqual(old.toolbarOrder, ToolbarItemID.defaultOrder)
+    }
+
+    func testMasonryNavigationStaysInColumnsAndCrossesToNeighbours() {
+        // 2 kolumny: wysokości 100, 50, 50, 50 → kolumna0 = [0, 3], kolumna1 = [1, 2]
+        let h = [100.0, 50, 50, 50]
+        XCTAssertEqual(MasonryLayout.distribute(heights: h, columns: 2), [[0, 3], [1, 2]])
+        XCTAssertEqual(MasonryLayout.move(from: 0, heights: h, columns: 2, .down), 3)
+        XCTAssertEqual(MasonryLayout.move(from: 1, heights: h, columns: 2, .down), 2)
+        XCTAssertEqual(MasonryLayout.move(from: 3, heights: h, columns: 2, .down), 3)   // koniec kolumny
+        XCTAssertEqual(MasonryLayout.move(from: 0, heights: h, columns: 2, .right), 1)   // środek 50 → najbliższy: 1 (25) lub 2 (85)
+        XCTAssertEqual(MasonryLayout.move(from: 3, heights: h, columns: 2, .right), 2)
+        XCTAssertEqual(MasonryLayout.move(from: 1, heights: h, columns: 2, .left), 0)
+        XCTAssertEqual(MasonryLayout.move(from: 0, heights: h, columns: 2, .left), 0)
+        XCTAssertEqual(MasonryLayout.move(from: nil, heights: h, columns: 2, .down), 0)
     }
 
     func testNotchEffectHasNoGlowAnymore() throws {

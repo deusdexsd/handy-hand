@@ -328,9 +328,16 @@ final class LibraryStore: ObservableObject {
     /// Strzałki: przechodzi po widocznych elementach i (zgodnie z ustawieniem) odtwarza.
     func moveSelection(_ d: GridNavigation.Direction) {
         let vis = visible
-        let cols = config.viewMode == .list ? 1 : gridColumns
         let cur = primary.flatMap { p in vis.firstIndex { $0.path == p.path } }
-        guard let n = GridNavigation.move(from: cur, count: vis.count, columns: cols, d) else { return }
+        let next: Int?
+        switch config.viewMode {
+        case .list: next = GridNavigation.move(from: cur, count: vis.count, columns: 1, d)
+        case .grid: next = GridNavigation.move(from: cur, count: vis.count, columns: gridColumns, d)
+        case .minimal:
+            let hs = vis.map { MasonryLayout.estimatedHeight(isAudio: $0.kind == .audio, pixelWidth: $0.pixelWidth, pixelHeight: $0.pixelHeight, scale: settings.tileScale) }
+            next = MasonryLayout.move(from: cur, heights: hs, columns: gridColumns, d)
+        }
+        guard let n = next else { return }
         click(vis[n], command: false, shift: false)
         scrollTarget = vis[n].path
     }
