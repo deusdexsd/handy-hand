@@ -63,9 +63,13 @@ struct ContentArea: View {
             } else if store.config.viewMode == .grid {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 148, maximum: 200), spacing: 10)], spacing: 10) {
-                            ForEach(vis) { TileView(store: store, waveforms: store.waveforms, thumbs: store.thumbnails, item: $0).id($0.path) }
-                        }.padding(.horizontal, 10).padding(.bottom, 10)
+                        if store.settings.minimalistGrid {
+                            MasonryGrid(store: store, waveforms: store.waveforms, thumbs: store.thumbnails, items: vis)
+                        } else {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 148, maximum: 200), spacing: 10)], spacing: 10) {
+                                ForEach(vis) { TileView(store: store, waveforms: store.waveforms, thumbs: store.thumbnails, item: $0).id($0.path) }
+                            }.padding(.horizontal, 10).padding(.bottom, 10)
+                        }
                     }
                     .modifier(SoftTopEdge())
                     .onChange(of: store.scrollTarget) { _, t in if let t { withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(t, anchor: nil) } } }

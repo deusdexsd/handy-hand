@@ -24,9 +24,11 @@ final class DockPanel: NSPanel {
     // macOS kieruje te konkretne skróty przez system komunikatów akcji ("standard edit" actions), nie zawsze przez
     // zwykły keyDown — jeśli firstResponder to pole tekstowe, ono samo implementuje te metody i to ono je złapie
     // pierwsze (w łańcuchu respondera), więc nadpisania tutaj działają wyłącznie poza polem, na plikach.
-    @objc func copy(_ sender: Any?) { _ = onKey?(.copy) }
-    @objc func paste(_ sender: Any?) { _ = onKey?(.paste) }
-    override func selectAll(_ sender: Any?) { _ = onKey?(.selectAll) }
+    // Zawsze sprawdzamy sami, czy jesteśmy w polu tekstowym — nie zakładamy, że pole złapie akcję pierwsze
+    // (dla ⌘V okazało się, że nie łapie; dla spójności ⌘C i ⌘A też jawnie to sprawdzają).
+    @objc func copy(_ sender: Any?) { if let tv = firstResponder as? NSTextView { tv.copy(sender) } else { _ = onKey?(.copy) } }
+    @objc func paste(_ sender: Any?) { if let tv = firstResponder as? NSTextView { tv.paste(sender) } else { _ = onKey?(.paste) } }
+    override func selectAll(_ sender: Any?) { if let tv = firstResponder as? NSTextView { tv.selectAll(sender) } else { _ = onKey?(.selectAll) } }
 
     /// Klawisze przechwytujemy przed SwiftUI (ScrollView sam by je zjadł), ale nie wtedy, gdy trwa pisanie w polu tekstowym.
     override func sendEvent(_ event: NSEvent) {
@@ -731,7 +733,7 @@ enum SelfTest {
 
                 // ⌘C przez PRAWDZIWY mechanizm komunikatów akcji (NSApp.sendAction), nie surowe sendEvent — tak faktycznie
                 // trafia fizyczne ⌘C z klawiatury (dlatego wcześniejszy test samym sendEvent nie złapał realnego zepsucia).
-                panel.makeFirstResponder(nil); store.selection = Set(store.visible.prefix(2).map(\.path))
+                panel.makeFirstResponder(panel.contentView); await wait(0.1); store.selection = Set(store.visible.prefix(2).map(\.path))
                 NSPasteboard.general.clearContents()
                 let sentViaAction = NSApp.sendAction(Selector(("copy:")), to: nil, from: nil)
                 await wait(0.1)
@@ -745,7 +747,7 @@ enum SelfTest {
                 panel.sendEvent(key(0, "a", cmd: true)); await wait(0.1)
                 let selLen = (panel.firstResponder as? NSTextView)?.selectedRange().length ?? -1
                 print("SELF 32g ⌘A w polu: zaznaczono cały tekst=\(selLen == store.search.count)"); store.search = ""
-                panel.makeFirstResponder(nil); store.selection = []
+                panel.makeFirstResponder(panel.contentView); await wait(0.1); store.selection = []
                 panel.sendEvent(key(0, "a", cmd: true)); await wait(0.1)
                 print("SELF 32h ⌘A poza polem: zaznaczono wszystkie widoczne=\(store.selection == Set(store.visible.map(\.path))) (\(store.selection.count))")
                 store.selection = []
@@ -766,6 +768,14 @@ enum SelfTest {
                 let pasteOK = NSApp.sendAction(Selector(("paste:")), to: nil, from: nil); await wait(1.0)
                 print("SELF 32l ⌘V przez sendAction: dostarczone=\(pasteOK) przybyło=\(store.items.count > beforeItems2)")
                 NSPasteboard.general.clearContents()
+
+                // ⌘V W POLU TEKSTOWYM (to zgłoszone jako zepsute): ma wkleić TEKST, nie próbować importować plików.
+                store.search = ""; panel.makeFirstResponder(field); await wait(0.2)
+                NSPasteboard.general.clearContents(); NSPasteboard.general.setString("wklejony-tekst", forType: .string)
+                let itemsBeforePasteInField = store.items.count
+                let pasteInFieldOK = NSApp.sendAction(Selector(("paste:")), to: nil, from: nil); await wait(0.2)
+                print("SELF 32m ⌘V w polu przez sendAction: dostarczone=\(pasteInFieldOK) tekst wklejony=\(store.search.contains("wklejony-tekst")) plików NIE dodano=\(store.items.count == itemsBeforePasteInField)")
+                store.search = ""; NSPasteboard.general.clearContents()
             } else { print("SELF 32 brak pola wyszukiwania w panelu") }
         }
         // Zapis na dysk

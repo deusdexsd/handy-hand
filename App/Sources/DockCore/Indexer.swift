@@ -75,7 +75,10 @@ public actor Indexer {
         var result: [MediaItem] = []
         var todo: [ScannedFile] = []
         for f in files {
-            if let e = existing[f.url.path], e.modified == f.modified, e.size == f.size, e.sourceID == source.id {
+            // Wideo bez wymiarów zaindeksowane starym kodem: doczytujemy je raz jeszcze, mimo że plik na dysku
+            // się nie zmienił — inaczej nigdy by nie dostały wymiarów potrzebnych do proporcjonalnych kafli.
+            let needsDimensionBackfill = f.kind == .video && existing[f.url.path]?.pixelWidth == nil
+            if let e = existing[f.url.path], e.modified == f.modified, e.size == f.size, e.sourceID == source.id, !needsDimensionBackfill {
                 var keep = e; keep.group = f.group; result.append(keep)
             } else { todo.append(f) }
         }

@@ -95,17 +95,15 @@ struct TileView: View {
                         .accessibilityLabel(fav ? "Usuń z ulubionych" : "Dodaj do ulubionych")
                 }
             }
-            .frame(height: tileHeight)
+            .frame(height: 64)
             .clipShape(RoundedRectangle(cornerRadius: 6))
-            if !store.settings.minimalistGrid {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(item.name).font(.system(size: 12, weight: .medium)).lineLimit(1).truncationMode(.middle)
-                    HStack(spacing: 4) {
-                        Image(systemName: MetaText.icon(item)).font(.system(size: 9))
-                        Text(MetaText.line(item))
-                    }
-                    .font(.system(size: 10.5)).foregroundStyle(.secondary).lineLimit(1)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(item.name).font(.system(size: 12, weight: .medium)).lineLimit(1).truncationMode(.middle)
+                HStack(spacing: 4) {
+                    Image(systemName: MetaText.icon(item)).font(.system(size: 9))
+                    Text(MetaText.line(item))
                 }
+                .font(.system(size: 10.5)).foregroundStyle(.secondary).lineLimit(1)
             }
         }
         .padding(7)
@@ -120,25 +118,134 @@ struct TileView: View {
         .accessibilityAction { store.click(item, command: false, shift: false) }
     }
 
-    /// W widoku minimalistycznym kafel obrazu/wideo ma proporcje materiału (pion zostaje pionem, poziom poziomem) —
-    /// bliżej Pinteresta niż sztywny prostokąt. Dźwięk (waveform) i pliki bez znanych wymiarów zostają przy stałej wysokości.
-    private var tileHeight: CGFloat {
-        guard store.settings.minimalistGrid, item.kind != .audio, let w = item.pixelWidth, let h = item.pixelHeight, w > 0, h > 0 else { return 64 }
-        return min(260, max(70, 160 * CGFloat(h) / CGFloat(w)))
-    }
-
     @ViewBuilder private var lane: some View {
         if item.kind == .audio {
             WaveformLane(item: item, peaks: waveforms.peaks(for: item), scale: store.waveformScale(for: item),
                          shade: store.shade(item), accentPlayed: nil, accent: accent, ticks: true)
         } else if let img = thumbs.image(for: item) {
-            Image(nsImage: img).resizable().scaledToFit().frame(maxWidth: .infinity).frame(height: tileHeight).background(Color.black.opacity(0.22))
+            Image(nsImage: img).resizable().scaledToFit().frame(maxWidth: .infinity).frame(height: 64).background(Color.black.opacity(0.22))
                 .overlay(alignment: .bottomTrailing) {
                     if item.kind == .video { Text(Fmt.duration(item.duration)).font(.system(size: 10, weight: .medium)).monospacedDigit()
                         .padding(.horizontal, 5).padding(.vertical, 1.5).background(.ultraThinMaterial, in: Capsule()).padding(4) }
                 }
         } else {
             ZStack { Color.primary.opacity(0.08); Image(systemName: MetaText.icon(item)).foregroundStyle(.secondary) }
+        }
+    }
+
+    private var dragOverlay: some View {
+        DragOverlay(paths: { store.dragPaths(for: item) }, previewName: { item.name }, isVideo: item.kind == .video,
+                    passThrough: CGRect(x: 4, y: 4, width: 30, height: 30),
+                    onDown: { shift, command in store.pressDown(item, shift: shift, command: command) }, onPress: { pressed = $0 },
+                    onClick: { c, s in store.click(item, command: c, shift: s) },
+                    onDrag: { store.dragging = $0 }, onHover: { hover = $0 },
+                    menu: { ItemMenu.build(store: store, item: item) })
+    }
+}
+
+/// Widok minimalistyczny: prawdziwa siatka „Pinterest” — kolumny o równej szerokości, każdy kafel w naturalnej
+/// proporcji materiału, bez dziur (nowy element trafia do aktualnie najkrótszej kolumny), bez karty/obwódki dookoła.
+struct MasonryGrid: View {
+    @ObservedObject var store: LibraryStore
+    @ObservedObject var waveforms: WaveformStore
+    @ObservedObject var thumbs: ThumbnailStore
+    let items: [MediaItem]
+
+    var body: some View {
+        let cols = max(1, store.gridColumns)
+        let distributed = Self.distribute(items, into: cols)
+        HStack(alignment: .top, spacing: 10) {
+            ForEach(0..<cols, id: \.self) { c in
+                VStack(spacing: 10) {
+                    ForEach(distributed[c]) { item in
+                        MinimalistTile(store: store, waveforms: waveforms, thumbs: thumbs, item: item).id(item.path)
+                    }
+                }.frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, 10).padding(.bottom, 10)
+    }
+
+    /// Jak w Pintereście: każdy kolejny element trafia do kolumny, która aktualnie ma najmniej wysokości.
+    private static func distribute(_ items: [MediaItem], into cols: Int) -> [[MediaItem]] {
+        var heights = [Double](repeating: 0, count: cols)
+        var out = Array(repeating: [MediaItem](), count: cols)
+        for item in items {
+            var shortest = 0
+            for i in 1..<cols where heights[i] < heights[shortest] { shortest = i }
+            out[shortest].append(item)
+            heights[shortest] += estimatedHeight(item) + 10
+        }
+        return out
+    }
+
+    static func estimatedHeight(_ item: MediaItem) -> Double {
+        guard item.kind != .audio, let w = item.pixelWidth, let h = item.pixelHeight, w > 0, h > 0 else { return 64 }
+        return min(260, max(70, 160 * Double(h) / Double(w)))
+    }
+}
+
+/// Kafel w widoku minimalistycznym: sam obraz/waveform w naturalnej proporcji, zaokrąglone rogi, bez tła karty
+/// i bez paddingu dookoła — jak na Pintereście. Gwiazdka, znaczek kopii, zaznaczenie i przeciąganie zostają.
+struct MinimalistTile: View {
+    @ObservedObject var store: LibraryStore
+    @ObservedObject var waveforms: WaveformStore
+    @ObservedObject var thumbs: ThumbnailStore
+    let item: MediaItem
+    @Environment(\.dockAccent) private var accent
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pressed = false
+    @State private var hover = false
+
+    var body: some View {
+        let selected = store.selection.contains(item.path)
+        let fav = store.isFavorite(item)
+        ZStack(alignment: .topLeading) {
+            content
+            if store.copies(item) > 1 {
+                Text("×\(store.copies(item))").font(.system(size: 10, weight: .semibold)).monospacedDigit()
+                    .padding(.horizontal, 5).padding(.vertical, 1.5).background(.ultraThinMaterial, in: Capsule())
+                    .frame(maxWidth: .infinity, alignment: .trailing).padding(6)
+                    .help(L("Ten plik występuje w \(store.copies(item)) miejscach (duplikaty są zwinięte)", "This file appears in \(store.copies(item)) places (duplicates are collapsed)"))
+                    .accessibilityLabel(L("\(store.copies(item)) kopie", "\(store.copies(item)) copies"))
+            }
+            if fav || hover {
+                Image(systemName: fav ? "star.fill" : "star")
+                    .font(.system(size: 12))
+                    .foregroundStyle(fav ? Color.yellow : Color.white)
+                    .padding(6)
+                    .contentShape(Rectangle())
+                    .onTapGesture { store.toggleFavorite([item.path]) }
+                    .accessibilityLabel(fav ? L("Usuń z ulubionych", "Remove from favorites") : L("Dodaj do ulubionych", "Add to favorites"))
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(selected ? accent : .clear, lineWidth: 2))
+        .scaleEffect(pressed ? 0.97 : 1)
+        .animation(reduceMotion ? .easeOut(duration: 0.08) : .spring(response: 0.25, dampingFraction: 1), value: pressed)
+        .overlay(dragOverlay)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(item.name), \(item.kind.label), \(Fmt.duration(item.duration))")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { store.click(item, command: false, shift: false) }
+    }
+
+    @ViewBuilder private var content: some View {
+        if item.kind == .audio {
+            WaveformLane(item: item, peaks: waveforms.peaks(for: item), scale: store.waveformScale(for: item),
+                         shade: store.shade(item), accentPlayed: nil, accent: accent, ticks: true)
+                .frame(height: 64).background(Color.primary.opacity(0.08))
+        } else if let img = thumbs.image(for: item) {
+            Image(nsImage: img).resizable().scaledToFit().frame(maxWidth: .infinity).background(Color.black.opacity(0.22))
+                .overlay(alignment: .bottomTrailing) {
+                    if item.kind == .video { Text(Fmt.duration(item.duration)).font(.system(size: 10, weight: .medium)).monospacedDigit()
+                        .padding(.horizontal, 5).padding(.vertical, 1.5).background(.ultraThinMaterial, in: Capsule()).padding(4) }
+                }
+        } else {
+            // Brak wczytanej miniatury: rezerwujemy miejsce w znanej proporcji, żeby nic nie „skoczyło” po wczytaniu.
+            let ratio: CGFloat = (item.pixelWidth.map(CGFloat.init)).flatMap { w in item.pixelHeight.map { CGFloat($0) }.map { w / $0 } } ?? 1
+            ZStack { Color.primary.opacity(0.08); Image(systemName: MetaText.icon(item)).foregroundStyle(.secondary) }
+                .aspectRatio(ratio, contentMode: .fit)
         }
     }
 
