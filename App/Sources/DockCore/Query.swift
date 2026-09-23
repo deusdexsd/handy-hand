@@ -60,6 +60,30 @@ public struct Preset: Identifiable, Codable, Equatable, Sendable {
 }
 
 /// Dane użytkownika potrzebne do filtrowania (bez UI).
+/// Notatka / zadanie w panelu po prawej. `collectionID == nil` = globalna (widoczna wszędzie).
+public struct NoteItem: Identifiable, Hashable, Codable, Sendable {
+    public var id = UUID()
+    public var text: String
+    public var done = false
+    public var collectionID: UUID?
+    public var created = Date()
+    public init(text: String, collectionID: UUID? = nil) { self.text = text; self.collectionID = collectionID }
+    enum CodingKeys: String, CodingKey { case id, text, done, collectionID, created }
+    public init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        text = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
+        done = try c.decodeIfPresent(Bool.self, forKey: .done) ?? false
+        collectionID = try c.decodeIfPresent(UUID.self, forKey: .collectionID)
+        created = try c.decodeIfPresent(Date.self, forKey: .created) ?? Date()
+    }
+
+    /// Notatki widoczne w danym miejscu: globalne + przypisane do zaznaczonej kolekcji.
+    public static func visible(_ notes: [NoteItem], collection: UUID?) -> [NoteItem] {
+        notes.filter { $0.collectionID == nil || $0.collectionID == collection }
+    }
+}
+
 public struct Organization: Codable, Equatable, Sendable {
     public var favorites: Set<String> = []
     public var tags: [String: [String]] = [:]
@@ -70,6 +94,7 @@ public struct Organization: Codable, Equatable, Sendable {
     /// Audio krótsze lub równe tej wartości to SFX, dłuższe to muzyka (chyba że plik ma ręczne przypisanie).
     public var sfxMaxSeconds: Double = 20
     public var classOverrides: [String: MediaClass] = [:]
+    public var notes: [NoteItem] = []
     public init() {}
 
     public func mediaClass(of i: MediaItem) -> MediaClass {
@@ -82,7 +107,7 @@ public struct Organization: Codable, Equatable, Sendable {
         }
     }
 
-    enum CodingKeys: String, CodingKey { case favorites, tags, collections, durationRanges, keywordRules, presets, sfxMaxSeconds, classOverrides }
+    enum CodingKeys: String, CodingKey { case favorites, tags, collections, durationRanges, keywordRules, presets, sfxMaxSeconds, classOverrides, notes }
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
         favorites = try c.decodeIfPresent(Set<String>.self, forKey: .favorites) ?? []
@@ -93,6 +118,7 @@ public struct Organization: Codable, Equatable, Sendable {
         presets = try c.decodeIfPresent([Preset].self, forKey: .presets) ?? []
         sfxMaxSeconds = try c.decodeIfPresent(Double.self, forKey: .sfxMaxSeconds) ?? 20
         classOverrides = try c.decodeIfPresent([String: MediaClass].self, forKey: .classOverrides) ?? [:]
+        notes = try c.decodeIfPresent([NoteItem].self, forKey: .notes) ?? []
     }
 
     public var allTags: [String] { Set(tags.values.flatMap { $0 }).sorted() }

@@ -59,7 +59,7 @@ final class ThumbnailStore: ObservableObject {
         let g = gate
         Task.detached(priority: .utility) {
             await g.acquire()
-            let img = isImage ? Self.renderImage(url, maxPixel: 320) : await Self.renderVideoFrame(url, dur)
+            let img = isImage ? Self.renderImage(url, maxPixel: 260) : await Self.renderVideoFrame(url, dur)
             await g.release()
             await MainActor.run { [weak self] in
                 if let img { self?.cache.setObject(img, forKey: path as NSString) } else { self?.failed.insert(path) }
@@ -110,7 +110,7 @@ final class ThumbnailStore: ObservableObject {
         guard let tracks = try? await asset.loadTracks(withMediaType: .video), !tracks.isEmpty else { return nil }
         let gen = AVAssetImageGenerator(asset: asset)
         gen.appliesPreferredTrackTransform = true
-        gen.maximumSize = CGSize(width: 320, height: 180)
+        gen.maximumSize = CGSize(width: 260, height: 146)
         let t = CMTime(seconds: min(1, dur / 2), preferredTimescale: 600)
         guard let cg = try? await gen.image(at: t).image else { return nil }
         return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))

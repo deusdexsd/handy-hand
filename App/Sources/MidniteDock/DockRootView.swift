@@ -33,6 +33,7 @@ struct DockRootView: View {
                     ContentArea(store: store)
                     PreviewBar(store: store, previewer: store.previewer, thumbs: store.thumbnails)
                 }
+                if store.settings.notesVisible { NotesPanel(store: store) }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)     // rozmiar dyktuje okno (rozciągane myszką)
@@ -131,6 +132,10 @@ struct ToolbarView: View {
             iconButton(mode == .list ? "list.bullet" : (mode == .grid ? "square.grid.2x2" : "rectangle.3.group"),
                        L("Widok: lista / siatka / minimalistyczny", "View: list / grid / minimalist")) {
                 store.config.viewMode = mode == .list ? .grid : (mode == .grid ? .minimal : .list)
+            }
+        case "notes":
+            iconButton(store.settings.notesVisible ? "checklist.checked" : "checklist", L("Notatki i zadania", "Notes and tasks"), active: store.settings.notesVisible) {
+                store.settings.notesVisible.toggle()
             }
         case "pin":
             iconButton(store.settings.mode == .pinned ? "pin.fill" : "pin", L("Przypnij panel", "Pin panel"), active: store.settings.mode == .pinned) {

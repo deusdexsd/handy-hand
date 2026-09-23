@@ -623,6 +623,18 @@ final class IndexerTests: XCTestCase {
         XCTAssertEqual(old.tileScale, 1); XCTAssertEqual(old.toolbarOrder, ToolbarItemID.defaultOrder)
     }
 
+    func testNotesVisibilityAndDecode() throws {
+        let c1 = UUID(), c2 = UUID()
+        let notes = [NoteItem(text: "global"), NoteItem(text: "a", collectionID: c1), NoteItem(text: "b", collectionID: c2)]
+        XCTAssertEqual(NoteItem.visible(notes, collection: nil).map(\.text), ["global"])
+        XCTAssertEqual(NoteItem.visible(notes, collection: c1).map(\.text), ["global", "a"])
+        var org = Organization(); org.notes = notes
+        let back = try JSONDecoder().decode(Organization.self, from: JSONEncoder().encode(org))
+        XCTAssertEqual(back.notes, notes)
+        XCTAssertEqual(try JSONDecoder().decode(Organization.self, from: Data("{}".utf8)).notes, [])   // stare zapisy bez notatek
+        XCTAssertTrue(AppSettings().toolbarOrder.contains("notes"))
+    }
+
     func testMasonryNavigationStaysInColumnsAndCrossesToNeighbours() {
         // 2 kolumny: wysokości 100, 50, 50, 50 → kolumna0 = [0, 3], kolumna1 = [1, 2]
         let h = [100.0, 50, 50, 50]

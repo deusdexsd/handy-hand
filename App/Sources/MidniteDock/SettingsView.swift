@@ -148,7 +148,7 @@ struct AppearanceTab: View {
             Section(L("Widok elementów", "Item view")) {
                 HStack {
                     Text(L("Rozmiar elementów", "Item size"))
-                    Slider(value: $store.data.settings.tileScale, in: 0.6...1.8)
+                    Slider(value: $store.data.settings.tileScale, in: 0.35...1.8)
                     Button(L("Domyślny", "Default")) { store.data.settings.tileScale = 1 }.disabled(store.data.settings.tileScale == 1)
                 }
                 Toggle(L("Widok minimalistyczny: ukryj nazwy przy dźwiękach", "Minimalist view: hide names on sounds"), isOn: $store.data.settings.minimalistHideAudioNames)

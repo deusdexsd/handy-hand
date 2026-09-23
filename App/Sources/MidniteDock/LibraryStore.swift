@@ -36,7 +36,7 @@ struct PromptRequest: Identifiable {
 
 @MainActor
 final class LibraryStore: ObservableObject {
-    @Published var data: UserData { didSet { dataVersion += 1; scheduleSave(); Lang.current = data.settings.language } }
+    @Published var data: UserData { didSet { dataVersion += 1; recordUndo(oldValue.org); scheduleSave(); Lang.current = data.settings.language } }
     @Published private(set) var items: [MediaItem] = [] { didSet { itemsVersion += 1 } }
     @Published var search = ""
     @Published var selection: Set<String> = []
@@ -61,6 +61,10 @@ final class LibraryStore: ObservableObject {
     private var saveTask: Task<Void, Never>?
     private var rescanTask: Task<Void, Never>?
     private var dataVersion = 0
+    private var undoStack: [Organization] = []
+    private var redoStack: [Organization] = []
+    private var applyingUndo = false
+    private var lastUndoPush = Date.distantPast
     private var itemsVersion = 0
     private var dupMemo: (key: [Int], value: DuplicateIndex)?
     private var visibleMemo: (key: [Int], value: [MediaItem])?
@@ -80,6 +84,51 @@ final class LibraryStore: ObservableObject {
 
     // MARK: skróty do danych
     var settings: AppSettings { get { data.settings } set { data.settings = newValue } }
+    /// Cofanie: każda zmiana organizacji (ulubione, tagi, kolekcje, typy dźwięków, przedziały, presety, notatki) trafia na stos.
+    /// Serie zmian w mniej niż 0,6 s (jedna czynność, np. ulubione dla wielu plików) łączą się w jeden krok.
+    /// Zmiany plików na dysku (zmiana nazwy) i źródeł nie są cofane tym stosem.
+    private func recordUndo(_ old: Organization) {
+        guard !applyingUndo, old != data.org else { return }
+        if Date().timeIntervalSince(lastUndoPush) > 0.6 {
+            undoStack.append(old)
+            if undoStack.count > 100 { undoStack.removeFirst() }
+        }
+        lastUndoPush = Date()
+        redoStack.removeAll()
+    }
+
+    var canUndo: Bool { !undoStack.isEmpty }
+    var canRedo: Bool { !redoStack.isEmpty }
+    var undoDepth: Int { undoStack.count }
+
+    @discardableResult func undo() -> Bool {
+        guard let prev = undoStack.popLast() else { return false }
+        applyingUndo = true; redoStack.append(data.org); data.org = prev; applyingUndo = false
+        lastUndoPush = .distantPast; return true
+    }
+
+    @discardableResult func redo() -> Bool {
+        guard let next = redoStack.popLast() else { return false }
+        applyingUndo = true; undoStack.append(data.org); data.org = next; applyingUndo = false
+        lastUndoPush = .distantPast; return true
+    }
+
+    // MARK: notatki
+    var selectedCollectionID: UUID? { if case .collection(let id) = config.category { return id }; return nil }
+    var visibleNotes: [NoteItem] { NoteItem.visible(org.notes, collection: selectedCollectionID) }
+
+    func addNote(_ text: String) {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return }
+        data.org.notes.append(NoteItem(text: t, collectionID: selectedCollectionID))
+    }
+    func updateNote(_ id: UUID, _ change: (inout NoteItem) -> Void) {
+        guard let i = data.org.notes.firstIndex(where: { $0.id == id }) else { return }
+        var n = data.org.notes[i]; change(&n)
+        if n != data.org.notes[i] { data.org.notes[i] = n }
+    }
+    func removeNote(_ id: UUID) { data.org.notes.removeAll { $0.id == id } }
+
     var org: Organization { get { data.org } set { data.org = newValue } }
     var config: ViewConfig { get { data.lastConfig } set { data.lastConfig = newValue } }
     var sources: [Source] { data.sources }

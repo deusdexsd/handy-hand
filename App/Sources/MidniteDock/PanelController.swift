@@ -3,7 +3,7 @@ import SwiftUI
 import Combine
 import DockCore
 
-enum PanelKey { case space, up, down, left, right, enter, escape, copy, paste, selectAll, digit(Int, shift: Bool) }
+enum PanelKey { case space, up, down, left, right, enter, escape, copy, paste, selectAll, undo, redo, digit(Int, shift: Bool) }
 
 final class DockPanel: NSPanel {
     var onKey: ((PanelKey) -> Bool)?
@@ -28,6 +28,8 @@ final class DockPanel: NSPanel {
     // (dla ⌘V okazało się, że nie łapie; dla spójności ⌘C i ⌘A też jawnie to sprawdzają).
     @objc func copy(_ sender: Any?) { if let tv = firstResponder as? NSTextView { tv.copy(sender) } else { _ = onKey?(.copy) } }
     @objc func paste(_ sender: Any?) { if let tv = firstResponder as? NSTextView { tv.paste(sender) } else { _ = onKey?(.paste) } }
+    @objc func undo(_ sender: Any?) { if let tv = firstResponder as? NSTextView { tv.undoManager?.undo() } else { _ = onKey?(.undo) } }
+    @objc func redo(_ sender: Any?) { if let tv = firstResponder as? NSTextView { tv.undoManager?.redo() } else { _ = onKey?(.redo) } }
     override func selectAll(_ sender: Any?) { if let tv = firstResponder as? NSTextView { tv.selectAll(sender) } else { _ = onKey?(.selectAll) } }
 
     /// Standardowe skróty edycji (⌘X/⌘C/⌘V/⌘A/⌘Z/⇧⌘Z). Pole tekstowe w macOS NIE obsługuje ich samo — polega na pozycjach
@@ -292,6 +294,8 @@ final class PanelController: NSObject {
         case .copy: store.copySelectionToPasteboard(); return !store.selection.isEmpty     // jak w Finderze: ⌘C = kopiuj pliki do schowka
         case .paste: return store.pasteFilesFromClipboard()                                // ⌘V = wklej pliki skopiowane skądinąd (np. z Findera)
         case .selectAll: store.selection = Set(store.visible.map(\.path)); return true     // ⌘A poza polem = zaznacz wszystkie widoczne
+        case .undo: return store.undo()
+        case .redo: return store.redo()
         case .escape: return false
         }
     }
@@ -463,7 +467,10 @@ enum SnapshotRunner {
         store.select(category: .klass(.sfx))
         await shot("04g-sfx-scale-dark")
         store.select(category: .all)
-        store.select(category: .all); store.config.viewMode = .minimal; store.settings.tileScale = 1.3
+        store.addNote("Dobrać muzykę do intra"); store.addNote("Zgrać SFX do sceny 3"); store.settings.notesVisible = true
+        await shot("04l-notes-dark")
+        store.data.org.notes = []; store.settings.notesVisible = false
+        store.select(category: .all); store.config.viewMode = .minimal; store.settings.tileScale = 0.4; await wait(0.6)
         await shot("04k-minimal-dark")
         store.config.viewMode = .grid; store.settings.tileScale = 1
         store.select(category: .all); store.config.viewMode = .list
@@ -811,6 +818,7 @@ enum SelfTest {
                         NSApp.sendEvent(e)
                     }
                 }
+                panel.makeKeyAndOrderFront(nil)
                 store.search = "abc"; panel.makeFirstResponder(field); await wait(0.2)
                 (panel.firstResponder as? NSTextView)?.selectAll(nil)
                 NSPasteboard.general.clearContents()
@@ -824,6 +832,27 @@ enum SelfTest {
                 print("SELF 32p ⌘C w polu (NSApp.sendEvent): schowek=\(NSPasteboard.general.string(forType: .string) ?? "nil")")
                 store.search = ""; NSPasteboard.general.clearContents()
             } else { print("SELF 32 brak pola wyszukiwania w panelu") }
+        }
+        // Cofanie / ponawianie zmian w organizacji (ulubione, notatki) — tu logika stosu, skrót ⌘Z przechodzi przez performKeyEquivalent.
+        do {
+            let path = store.visible.first?.path ?? ""
+            let favBefore = store.org.favorites
+            store.toggleFavorite([path]); let favAfter = store.org.favorites
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            let bp = controller.bodyPanel
+            bp.makeKeyAndOrderFront(nil); bp.makeFirstResponder(bp.contentView); await wait(0.2)
+            if let e = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .command, timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: bp.windowNumber,
+                                        context: nil, characters: "z", charactersIgnoringModifiers: "z", isARepeat: false, keyCode: 6) { NSApp.sendEvent(e) }
+            await wait(0.2)
+            print("SELF 34a ⌘Z (NSApp.sendEvent) cofa ulubione: \(store.org.favorites == favBefore)")
+            store.redo(); try? await Task.sleep(nanoseconds: 800_000_000)
+            store.addNote("test-notatka")
+            let n1 = store.org.notes.count
+            let u1 = store.undo(); let afterU1 = store.org.notes.count
+            let u2 = store.undo(); let afterU2 = store.org.favorites
+            let r = store.redo(); let afterR = store.org.favorites
+            print("SELF 34 cofanie: notatka dodana=\(n1) cofnięta=\(u1 && afterU1 == n1 - 1) ulubione cofnięte=\(u2 && afterU2 == favBefore) (było \(favAfter.count)) ponowione=\(r && afterR == favAfter)")
+            store.undo(); store.undo()
         }
         // Zapis na dysk
         store.settings.accent = .violet; store.settings.placement = .rightMiddle

@@ -31,15 +31,17 @@ struct ContentArea: View {
 
     var body: some View {
         let vis = store.visible
-        contentBody(vis)
+        VStack(spacing: 0) {
+            contentBody(vis)
             .background(GeometryReader { g in
                 Color.clear
                     .onAppear { store.gridColumns = GridNavigation.columns(width: g.size.width, minItem: 148 * store.settings.tileScale) }
                     .onChange(of: g.size.width) { _, w in store.gridColumns = GridNavigation.columns(width: w, minItem: 148 * store.settings.tileScale) }
-                    .onChange(of: store.settings.tileScale) { _, sc in store.gridColumns = GridNavigation.columns(width: g.size.width, minItem: 148 * sc) }
+                    .onChange(of: store.settings.tileScale) { _, sc in store.gridColumns = GridNavigation.columns(width: g.size.width, minItem: 148 * sc); store.objectWillChange.send() }
             })
-            .overlay(alignment: .bottomTrailing) { if !store.items.isEmpty { SizeSlider(store: store) } }
             .dropDestination(for: URL.self) { urls, _ in store.addDropped(urls) }   // foldery i pliki z Findera
+            if !store.items.isEmpty { SizeSlider(store: store) }     // osobny pasek pod listą: nie zasłania elementów
+        }
     }
 
     @ViewBuilder private func contentBody(_ vis: [MediaItem]) -> some View {
@@ -96,12 +98,11 @@ struct SizeSlider: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: "square.grid.3x3").font(.system(size: 8)).foregroundStyle(.secondary)
-            Slider(value: $store.data.settings.tileScale, in: 0.6...1.8).controlSize(.mini).frame(width: 84)
+            Slider(value: $store.data.settings.tileScale, in: 0.35...1.8).controlSize(.mini).frame(width: 84)
             Image(systemName: "square.grid.2x2").font(.system(size: 11)).foregroundStyle(.secondary)
         }
-        .padding(.horizontal, 9).padding(.vertical, 5)
-        .background(.regularMaterial, in: Capsule())
-        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .padding(.horizontal, 12).padding(.vertical, 4)
         .help(L("Rozmiar elementów", "Item size"))
         .accessibilityLabel(L("Rozmiar elementów", "Item size"))
     }

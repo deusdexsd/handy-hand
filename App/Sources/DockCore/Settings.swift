@@ -73,6 +73,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var minimalistHideAudioNames: Bool = true
     /// Rozmiar elementów we wszystkich widokach (suwak): 0.6…1.8, 1 = domyślny.
     public var tileScale: Double = 1
+    /// Panel notatek i zadań po prawej stronie.
+    public var notesVisible: Bool = false
     /// Kolejność ikon w toolbarze (przeciąganie z ⌘). Puste/nieznane wpisy uzupełnia widok.
     public var toolbarOrder: [String] = ToolbarItemID.defaultOrder
     public var accent: AccentChoice = .system
@@ -108,7 +110,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var searchMetadata: Bool = false
     public init() {}
 
-    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, stopPlaybackOnCollapse, waveformAutoScale, bigMediaPreview, quickKeys, notchEffect, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, sidebarHidden, minimalistHideAudioNames, tileScale, toolbarOrder, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
+    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, stopPlaybackOnCollapse, waveformAutoScale, bigMediaPreview, quickKeys, notchEffect, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, sidebarHidden, minimalistHideAudioNames, tileScale, notesVisible, toolbarOrder, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
     /// Tolerancyjne dekodowanie: brakujący klucz (np. po aktualizacji) = wartość domyślna, a nie utrata ustawień.
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -121,7 +123,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         categoryLayout = try c.decodeIfPresent(CategoryLayout.self, forKey: .categoryLayout) ?? def.categoryLayout
         sidebarHidden = try c.decodeIfPresent(Bool.self, forKey: .sidebarHidden) ?? def.sidebarHidden
         minimalistHideAudioNames = try c.decodeIfPresent(Bool.self, forKey: .minimalistHideAudioNames) ?? def.minimalistHideAudioNames
-        tileScale = min(1.8, max(0.6, try c.decodeIfPresent(Double.self, forKey: .tileScale) ?? def.tileScale))
+        notesVisible = try c.decodeIfPresent(Bool.self, forKey: .notesVisible) ?? def.notesVisible
+        tileScale = min(1.8, max(0.35, try c.decodeIfPresent(Double.self, forKey: .tileScale) ?? def.tileScale))
         toolbarOrder = ToolbarItemID.sanitized(try c.decodeIfPresent([String].self, forKey: .toolbarOrder) ?? def.toolbarOrder)
         accent = try c.decodeIfPresent(AccentChoice.self, forKey: .accent) ?? def.accent
         sourceTints = try c.decodeIfPresent(Bool.self, forKey: .sourceTints) ?? def.sourceTints
@@ -205,7 +208,7 @@ public final class UserDataStore: @unchecked Sendable {
 
 /// Ikony toolbaru, które da się przestawiać (⌘ + przeciągnięcie). Pole wyszukiwania i tytuł kategorii zostają na stałe.
 public enum ToolbarItemID {
-    public static let defaultOrder = ["metadata", "filter", "sort", "favorites", "presets", "view", "pin", "settings"]
+    public static let defaultOrder = ["metadata", "filter", "sort", "favorites", "presets", "view", "notes", "pin", "settings"]
     /// Wyrzuca nieznane i zdublowane wpisy, brakujące dokłada na końcu.
     public static func sanitized(_ order: [String]) -> [String] {
         var seen = Set<String>(); var out: [String] = []
