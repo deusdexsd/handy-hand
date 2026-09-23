@@ -65,6 +65,9 @@ struct ToolbarView: View {
             iconButton(store.settings.searchMetadata ? "tag.fill" : "tag",
                        L("Szukaj też w tagach, rozszerzeniu i wydarzeniu FCP (nie tylko w nazwie)", "Also search tags, extension and FCP event (not just the name)"),
                        active: store.settings.searchMetadata) { store.settings.searchMetadata.toggle() }
+            iconButton(store.settings.minimalistGrid ? "square.grid.2x2.fill" : "square.grid.2x2",
+                       L("Widok minimalistyczny (bez nazw pod kaflami)", "Minimalist view (no names under tiles)"),
+                       active: store.settings.minimalistGrid) { store.settings.minimalistGrid.toggle() }
             FilterMenu(store: store)
             SortMenu(store: store)
             iconButton(store.settings.favoritesFirst ? "star.fill" : "star",

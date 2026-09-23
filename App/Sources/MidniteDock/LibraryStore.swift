@@ -306,6 +306,11 @@ final class LibraryStore: ObservableObject {
 
     // MARK: zaznaczenie i podgląd
     func click(_ item: MediaItem, command: Bool, shift: Bool) {
+        // Ponowne zwykłe kliknięcie już zaznaczonego, odtwarzanego elementu: przełącza pauzę/odtwarzanie,
+        // zamiast (bez efektu, bo i tak już gra) zaczynać jeszcze raz od bieżącej pozycji.
+        if !command, !shift, primary?.path == item.path, selection == [item.path], previewer.isPlaying, previewer.item?.path == item.path {
+            previewer.toggle(); return
+        }
         let vis = visible
         if shift, let a = anchorPath, let i0 = vis.firstIndex(where: { $0.path == a }), let i1 = vis.firstIndex(where: { $0.path == item.path }) {
             selection = Set(vis[min(i0, i1)...max(i0, i1)].map(\.path))

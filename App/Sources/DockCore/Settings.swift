@@ -77,6 +77,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var expandedWidth: Double = 720
     public var expandedHeight: Double = 460
     public var autoplayOnSelect: Bool = true
+    /// Zwinięcie panelu (kursor całkiem odjeżdża) zatrzymuje odtwarzanie. Wyłącz, żeby grało dalej w tle.
+    public var stopPlaybackOnCollapse: Bool = true
     public var hideDuplicates: Bool = true
     public var waveformAutoScale: Bool = true
     /// Większy podgląd obrazów i wideo w pasku na dole panelu (domyślnie wyłączony: jak wcześniej).
@@ -102,7 +104,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var searchMetadata: Bool = false
     public init() {}
 
-    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, waveformAutoScale, bigMediaPreview, quickKeys, notchEffect, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, sidebarHidden, minimalistGrid, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
+    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, stopPlaybackOnCollapse, waveformAutoScale, bigMediaPreview, quickKeys, notchEffect, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, sidebarHidden, minimalistGrid, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
     /// Tolerancyjne dekodowanie: brakujący klucz (np. po aktualizacji) = wartość domyślna, a nie utrata ustawień.
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -121,6 +123,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         expandedWidth = try c.decodeIfPresent(Double.self, forKey: .expandedWidth) ?? def.expandedWidth
         expandedHeight = try c.decodeIfPresent(Double.self, forKey: .expandedHeight) ?? def.expandedHeight
         autoplayOnSelect = try c.decodeIfPresent(Bool.self, forKey: .autoplayOnSelect) ?? def.autoplayOnSelect
+        stopPlaybackOnCollapse = try c.decodeIfPresent(Bool.self, forKey: .stopPlaybackOnCollapse) ?? def.stopPlaybackOnCollapse
         hideDuplicates = try c.decodeIfPresent(Bool.self, forKey: .hideDuplicates) ?? def.hideDuplicates
         waveformAutoScale = try c.decodeIfPresent(Bool.self, forKey: .waveformAutoScale) ?? def.waveformAutoScale
         bigMediaPreview = try c.decodeIfPresent(Bool.self, forKey: .bigMediaPreview) ?? def.bigMediaPreview

@@ -20,6 +20,14 @@ final class DockPanel: NSPanel {
     override var canBecomeKey: Bool { allowsKey }
     override var canBecomeMain: Bool { false }
 
+    // ⌘C/⌘V/⌘A: dodatkowo (obok przechwytywania w sendEvent poniżej) jako właściwe akcje NSResponder.
+    // macOS kieruje te konkretne skróty przez system komunikatów akcji ("standard edit" actions), nie zawsze przez
+    // zwykły keyDown — jeśli firstResponder to pole tekstowe, ono samo implementuje te metody i to ono je złapie
+    // pierwsze (w łańcuchu respondera), więc nadpisania tutaj działają wyłącznie poza polem, na plikach.
+    @objc func copy(_ sender: Any?) { _ = onKey?(.copy) }
+    @objc func paste(_ sender: Any?) { _ = onKey?(.paste) }
+    override func selectAll(_ sender: Any?) { _ = onKey?(.selectAll) }
+
     /// Klawisze przechwytujemy przed SwiftUI (ScrollView sam by je zjadł), ale nie wtedy, gdy trwa pisanie w polu tekstowym.
     override func sendEvent(_ event: NSEvent) {
         // Esc w polu tekstowym (np. wyszukiwarce) wychodzi z pisania, tekst zostaje, a klawisze 1-0, strzałki i spacja znów działają.
@@ -229,6 +237,7 @@ final class PanelController: NSObject {
                 state.expanded = true
             } else {
                 state.expanded = false
+                if store.settings.stopPlaybackOnCollapse { store.previewer.pause() }
                 let w = DispatchWorkItem { [weak self] in
                     guard let self, !self.expanded else { return }
                     self.body.orderOut(nil)
@@ -720,6 +729,16 @@ enum SelfTest {
                 let copiedInField = (NSPasteboard.general.readObjects(forClasses: [NSURL.self]) as? [URL]) ?? []
                 print("SELF 32f ⌘C w polu tekstowym: nie łapiemy jako skrót plikowy=\(copiedInField.isEmpty)")
 
+                // ⌘C przez PRAWDZIWY mechanizm komunikatów akcji (NSApp.sendAction), nie surowe sendEvent — tak faktycznie
+                // trafia fizyczne ⌘C z klawiatury (dlatego wcześniejszy test samym sendEvent nie złapał realnego zepsucia).
+                panel.makeFirstResponder(nil); store.selection = Set(store.visible.prefix(2).map(\.path))
+                NSPasteboard.general.clearContents()
+                let sentViaAction = NSApp.sendAction(Selector(("copy:")), to: nil, from: nil)
+                await wait(0.1)
+                let copiedViaAction = (NSPasteboard.general.readObjects(forClasses: [NSURL.self]) as? [URL])?.map(\.path) ?? []
+                print("SELF 32j ⌘C przez sendAction (prawdziwa ścieżka klawiatury): dostarczone=\(sentViaAction) skopiowane=\(copiedViaAction.count) zgadza się=\(Set(copiedViaAction) == store.selection)")
+                NSPasteboard.general.clearContents(); store.selection = []
+
                 // ⌘A: w polu zaznacza cały tekst; poza polem zaznacza wszystkie widoczne pliki (jak w Finderze).
                 store.search = "abcdefgh"; panel.makeFirstResponder(field); await wait(0.2)
                 (panel.firstResponder as? NSTextView)?.setSelectedRange(NSRange(location: 0, length: 0))
@@ -730,6 +749,8 @@ enum SelfTest {
                 panel.sendEvent(key(0, "a", cmd: true)); await wait(0.1)
                 print("SELF 32h ⌘A poza polem: zaznaczono wszystkie widoczne=\(store.selection == Set(store.visible.map(\.path))) (\(store.selection.count))")
                 store.selection = []
+                let selAllOK = NSApp.sendAction(#selector(NSStandardKeyBindingResponding.selectAll(_:)), to: nil, from: nil); await wait(0.1)
+                print("SELF 32k ⌘A przez sendAction: dostarczone=\(selAllOK) zaznaczono=\(store.selection.count)"); store.selection = []
 
                 // ⌘V poza polem: plik skopiowany skądinąd (np. z Findera) trafia do biblioteki jak przeciągnięcie.
                 let pasteFile = FileManager.default.temporaryDirectory.appendingPathComponent("paste-test-\(UUID().uuidString).wav")
@@ -738,6 +759,12 @@ enum SelfTest {
                 let beforeItems = store.items.count
                 panel.sendEvent(key(9, "v", cmd: true)); await wait(1.2)
                 print("SELF 32i ⌘V poza polem: przybyło plików=\(store.items.count > beforeItems) (\(beforeItems) -> \(store.items.count))")
+                let pasteFile2 = FileManager.default.temporaryDirectory.appendingPathComponent("paste-test-\(UUID().uuidString).wav")
+                try? DevMedia.tone(.init(name: "paste_test2", seconds: 0.5, shape: "impact"), to: pasteFile2, seed: 11)
+                NSPasteboard.general.clearContents(); NSPasteboard.general.writeObjects([pasteFile2 as NSURL])
+                let beforeItems2 = store.items.count
+                let pasteOK = NSApp.sendAction(Selector(("paste:")), to: nil, from: nil); await wait(1.0)
+                print("SELF 32l ⌘V przez sendAction: dostarczone=\(pasteOK) przybyło=\(store.items.count > beforeItems2)")
                 NSPasteboard.general.clearContents()
             } else { print("SELF 32 brak pola wyszukiwania w panelu") }
         }

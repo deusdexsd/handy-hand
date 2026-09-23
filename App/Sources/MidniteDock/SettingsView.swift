@@ -54,6 +54,7 @@ struct GeneralTab: View {
                     Button(L("Przywróć tylko Final Cut Pro", "Reset to Final Cut Pro only")) { store.data.settings.watchedBundleIDs = ["com.apple.FinalCut"] }
                 }
                 Toggle(L("Odtwarzaj po kliknięciu kafla", "Play on tile click"), isOn: $store.data.settings.autoplayOnSelect)
+                Toggle(L("Zatrzymaj odtwarzanie po zwinięciu panelu", "Stop playback when the panel collapses"), isOn: $store.data.settings.stopPlaybackOnCollapse)
                 Toggle(L("Większy podgląd obrazów i wideo na dole panelu", "Bigger image/video preview at the bottom of the panel"), isOn: $store.data.settings.bigMediaPreview)
             }
             Section("Notch") {

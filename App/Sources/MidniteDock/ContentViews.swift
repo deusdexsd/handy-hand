@@ -170,7 +170,6 @@ struct PreviewBar: View {
                     if store.isIndexing { ProgressView().controlSize(.mini) }
                     Text(store.isIndexing ? L("Indeksuję…", "Indexing…") : L("\(store.visible.count) elementów", "\(store.visible.count) items")).font(.system(size: 11)).foregroundStyle(.tertiary)
                     Spacer()
-                    Text(L("Spacja: odsłuch  ·  przeciągnij kafel na timeline w FCP", "Space: play  ·  drag a tile onto the FCP timeline")).font(.system(size: 11)).foregroundStyle(.tertiary)
                 }.padding(.horizontal, 12).frame(height: 28)
             }
         }

@@ -98,8 +98,17 @@ public actor Indexer {
                         }
                         let d = (try? await AVURLAsset(url: f.url).load(.duration).seconds) ?? 0
                         guard d.isFinite, d > 0 else { return nil }
+                        // Wymiary klatki (dla widoku minimalistycznego: kafel w proporcji materiału, nie sztywny prostokąt).
+                        // Nieudane wczytanie nie ma prawa wywalić indeksowania — po prostu zostaje bez wymiarów.
+                        var vw: Int?, vh: Int?
+                        if f.kind == .video, let track = try? await AVURLAsset(url: f.url).loadTracks(withMediaType: .video).first,
+                           let size = try? await track.load(.naturalSize), let transform = try? await track.load(.preferredTransform) {
+                            let s = size.applying(transform)
+                            let w = abs(s.width), h = abs(s.height)
+                            if w > 0, h > 0 { vw = Int(w.rounded()); vh = Int(h.rounded()) }
+                        }
                         return MediaItem(path: f.url.path, name: f.name, ext: f.ext, kind: f.kind, duration: d, size: f.size,
-                                         created: f.created, modified: f.modified, sourceID: source.id, group: f.group)
+                                         created: f.created, modified: f.modified, sourceID: source.id, group: f.group, pixelWidth: vw, pixelHeight: vh)
                     }
                 }
                 var r: [MediaItem?] = []

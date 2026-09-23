@@ -95,7 +95,7 @@ struct TileView: View {
                         .accessibilityLabel(fav ? "Usuń z ulubionych" : "Dodaj do ulubionych")
                 }
             }
-            .frame(height: 64)
+            .frame(height: tileHeight)
             .clipShape(RoundedRectangle(cornerRadius: 6))
             if !store.settings.minimalistGrid {
                 VStack(alignment: .leading, spacing: 1) {
@@ -120,12 +120,19 @@ struct TileView: View {
         .accessibilityAction { store.click(item, command: false, shift: false) }
     }
 
+    /// W widoku minimalistycznym kafel obrazu/wideo ma proporcje materiału (pion zostaje pionem, poziom poziomem) —
+    /// bliżej Pinteresta niż sztywny prostokąt. Dźwięk (waveform) i pliki bez znanych wymiarów zostają przy stałej wysokości.
+    private var tileHeight: CGFloat {
+        guard store.settings.minimalistGrid, item.kind != .audio, let w = item.pixelWidth, let h = item.pixelHeight, w > 0, h > 0 else { return 64 }
+        return min(260, max(70, 160 * CGFloat(h) / CGFloat(w)))
+    }
+
     @ViewBuilder private var lane: some View {
         if item.kind == .audio {
             WaveformLane(item: item, peaks: waveforms.peaks(for: item), scale: store.waveformScale(for: item),
                          shade: store.shade(item), accentPlayed: nil, accent: accent, ticks: true)
         } else if let img = thumbs.image(for: item) {
-            Image(nsImage: img).resizable().scaledToFit().frame(maxWidth: .infinity).frame(height: 64).background(Color.black.opacity(0.22))
+            Image(nsImage: img).resizable().scaledToFit().frame(maxWidth: .infinity).frame(height: tileHeight).background(Color.black.opacity(0.22))
                 .overlay(alignment: .bottomTrailing) {
                     if item.kind == .video { Text(Fmt.duration(item.duration)).font(.system(size: 10, weight: .medium)).monospacedDigit()
                         .padding(.horizontal, 5).padding(.vertical, 1.5).background(.ultraThinMaterial, in: Capsule()).padding(4) }
