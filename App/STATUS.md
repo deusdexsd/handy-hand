@@ -70,6 +70,7 @@ Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`); bund
 - Notatki (`NotesPanel.swift`): globalne albo przypięte do kolekcji/folderu/typu, przeciąganie na lewy panel, przełącznik Tu/Wszystkie.
 - Import `.fcpxml`/`.fcpxmld` (`FCPXMLImport`): kolekcja + tagi ze słów kluczowych + ulubione z ratingu.
 - Ikona w pasku menu: 5 wariantów (Palec, Dłoń, HA HA, Fala, Klatki); lewy klik = Ustawienia, prawy = menu.
+- Przewodnik pierwszego uruchomienia (6 kroków, do pominięcia) + samouczek „co jest co” (`Onboarding.swift`); flagi `onboardingDone`/`tourDone`, migracja schematu v4 (istniejące dane = bez przewodnika); wraca z menu paska menu i Ustawienia → Ogólne → Pomoc. Licencja MIT, repo publiczne: github.com/deusdexsd/handy-hand.
 - **Niesprawdzone na żywo** (tylko autotesty/zrzuty): przeciąganie notatki myszką, utrzymanie panelu przy menu wystającym poza panel, kliknięcia ikony w pasku menu, wydajność na bardzo dużych bibliotekach.
 
 ## Dystrybucja
