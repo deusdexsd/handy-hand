@@ -177,6 +177,10 @@ struct AppearanceTab: View {
                     Text(L("przezroczysty", "clear")).font(.caption).foregroundStyle(.secondary)
                     Button(L("Domyślna", "Default")) { store.data.settings.panelTransparency = 0.5 }.disabled(store.data.settings.panelTransparency == 0.5)
                 }
+                Picker(L("Jakość miniatur", "Thumbnail quality"), selection: $store.data.settings.thumbnailQuality) {
+                    ForEach(ThumbnailQuality.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
+                Text(L("Niższa jakość zmniejsza zużycie pamięci i przyspiesza przewijanie przy bardzo dużych bibliotekach. Zmiana wczytuje widoczne miniatury od nowa.", "Lower quality uses less memory and scrolls faster on very large libraries. Changing it reloads the visible thumbnails.")).font(.caption).foregroundStyle(.secondary)
                 Picker(L("Proporcje miniatur w siatce", "Grid thumbnail ratio"), selection: $store.data.settings.gridRatio) {
                     ForEach(GridRatio.allCases, id: \.self) { Text($0.label).tag($0) }
                 }.pickerStyle(.segmented)

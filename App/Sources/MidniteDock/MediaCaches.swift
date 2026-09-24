@@ -43,6 +43,14 @@ final class ThumbnailStore: ObservableObject {
     private var cache: [String: NSImage] = [:]
     private var cacheOrder: [String] = []
     private let cacheLimit = 600
+    /// Maksymalny bok miniatury w pikselach (Ustawienia → jakość miniatur).
+    private(set) var maxPixel = 260
+
+    /// Zmiana jakości: wyrzuca wczytane miniatury, żeby widoczne kafle wczytały się od nowa w nowym rozmiarze.
+    func setQuality(maxPixel px: Int) {
+        guard px != maxPixel else { return }
+        maxPixel = px; cache.removeAll(); cacheOrder.removeAll(); failed.removeAll(); version += 1
+    }
     private func store(_ img: NSImage, for path: String) {
         if cache.updateValue(img, forKey: path) == nil { cacheOrder.append(path) }
         if cacheOrder.count > cacheLimit { cache.removeValue(forKey: cacheOrder.removeFirst()) }
@@ -63,10 +71,10 @@ final class ThumbnailStore: ObservableObject {
         guard item.kind != .audio, !failed.contains(item.path), !pending.contains(item.path) else { return nil }
         pending.insert(item.path); attempts[item.path, default: 0] += 1
         let (url, dur, path, isImage) = (item.url, item.duration, item.path, item.kind == .image)
-        let g = gate
+        let g = gate; let px = maxPixel
         Task.detached(priority: .utility) {
             await g.acquire()
-            let img = isImage ? Self.renderImage(url, maxPixel: 260) : await Self.renderVideoFrame(url, dur)
+            let img = isImage ? Self.renderImage(url, maxPixel: px) : await Self.renderVideoFrame(url, dur, maxPixel: px)
             await g.release()
             await MainActor.run { [weak self] in
                 if let img { self?.store(img, for: path) } else { self?.failed.insert(path) }
@@ -111,13 +119,13 @@ final class ThumbnailStore: ObservableObject {
             .map { NSImage(cgImage: $0, size: NSSize(width: $0.width, height: $0.height)) }
     }
 
-    nonisolated static func renderVideoFrame(_ url: URL, _ dur: Double) async -> NSImage? {
+    nonisolated static func renderVideoFrame(_ url: URL, _ dur: Double, maxPixel: Int = 260) async -> NSImage? {
         let asset = AVURLAsset(url: url)
         // Plik .mp4/.mov bez ścieżki wideo (sam dźwięk) nie ma klatki: bez tego sprawdzenia generator próbował w kółko.
         guard let tracks = try? await asset.loadTracks(withMediaType: .video), !tracks.isEmpty else { return nil }
         let gen = AVAssetImageGenerator(asset: asset)
         gen.appliesPreferredTrackTransform = true
-        gen.maximumSize = CGSize(width: 260, height: 146)
+        gen.maximumSize = CGSize(width: maxPixel, height: maxPixel)      // z zachowaniem proporcji (pion i poziom w jednym limicie)
         let t = CMTime(seconds: min(1, dur / 2), preferredTimescale: 600)
         guard let cg = try? await gen.image(at: t).image else { return nil }
         return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))

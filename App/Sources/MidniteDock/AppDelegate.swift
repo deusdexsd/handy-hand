@@ -123,7 +123,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func showSettings() {
         if settingsWindow == nil {
-            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 520), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
+            let w = SettingsWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 520), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
             w.title = L("Ustawienia", "Settings"); w.isReleasedWhenClosed = false
             w.contentView = NSHostingView(rootView: SettingsView(store: store))
             settingsWindow = w
@@ -134,5 +134,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
+    }
+}
+
+
+/// Okno Ustawień: Esc je zamyka (poza sytuacją, gdy Esc kończy edycję pola tekstowego, np. zapisywanie skrótu).
+final class SettingsWindow: NSWindow {
+    override func cancelOperation(_ sender: Any?) { close() }
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .keyDown, event.keyCode == 53, event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty, !(firstResponder is NSTextView) { close(); return }
+        super.sendEvent(event)
     }
 }

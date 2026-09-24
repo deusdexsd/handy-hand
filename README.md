@@ -4,6 +4,9 @@ Natywny panel dla macOS przy notchu: biblioteka Twoich dźwięków (SFX, muzyka)
 
 *English:* a native macOS notch-docked media library panel for Final Cut Pro — browse sounds, video and images from disk and drag them onto the timeline. Three view modes (list / grid / minimalist masonry), collections, notes, undo. Local only, no accounts, no network.
 
+![Widok minimalistyczny](docs/screenshots/minimalistyczny.jpg)
+![Panel notatek](docs/screenshots/notatki.jpg)
+
 - Instrukcja użytkownika: [`docs/Instrukcja.html`](docs/Instrukcja.html)
 - Stan prac i lista sprawdzonych / niesprawdzonych rzeczy: [`App/STATUS.md`](App/STATUS.md)
 

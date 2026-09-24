@@ -36,7 +36,7 @@ struct PromptRequest: Identifiable {
 
 @MainActor
 final class LibraryStore: ObservableObject {
-    @Published var data: UserData { didSet { dataVersion += 1; recordUndo(oldValue.org); scheduleSave(); Lang.current = data.settings.language } }
+    @Published var data: UserData { didSet { dataVersion += 1; recordUndo(oldValue.org); if oldValue.settings.thumbnailQuality != data.settings.thumbnailQuality { thumbnails.setQuality(maxPixel: data.settings.thumbnailQuality.maxPixel) }; scheduleSave(); Lang.current = data.settings.language } }
     @Published private(set) var items: [MediaItem] = [] { didSet { itemsVersion += 1 } }
     @Published var search = ""
     @Published var selection: Set<String> = []

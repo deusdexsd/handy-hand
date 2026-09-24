@@ -496,7 +496,7 @@ enum SnapshotRunner {
         store.newCollection(name: "Projekt Alfa"); if let cid = store.org.collections.last?.id { store.select(category: .collection(cid)) }; store.addNote("Dobrać muzykę do intra"); store.select(category: .all); store.addNote("Zgrać SFX do sceny 3"); store.settings.notesVisible = true
         await shot("04l-notes-dark")
         store.data.org.notes = []; store.data.org.collections.removeAll { $0.name == "Projekt Alfa" }; store.select(category: .all); store.settings.notesVisible = false
-        store.select(category: .all); store.config.viewMode = .minimal; store.settings.tileScale = 0.4; await wait(0.6)
+        store.select(category: .all); store.config.viewMode = .minimal; store.settings.tileScale = 0.75; await wait(0.6)
         await shot("04k-minimal-dark")
         store.config.viewMode = .grid; store.settings.tileScale = 1
         store.select(category: .all); store.config.viewMode = .list
@@ -940,6 +940,21 @@ enum SelfTest {
             try? FileManager.default.removeItem(at: xmlURL)
             store.menuTracking = true; controller.debugMouse = nil
             print("SELF 35c menuTracking trzyma panel: \(store.holdsPanelOpen)"); store.menuTracking = false
+        }
+        // Esc zamyka okno Ustawień; zmiana jakości miniatur przeładowuje je w nowym rozmiarze.
+        do {
+            let sw = SettingsWindow(contentRect: NSRect(x: 0, y: 0, width: 300, height: 200), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            sw.isReleasedWhenClosed = false; sw.makeKeyAndOrderFront(nil); await wait(0.3)
+            let esc = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: sw.windowNumber, context: nil, characters: "\u{1b}", charactersIgnoringModifiers: "\u{1b}", isARepeat: false, keyCode: 53)!
+            NSApp.sendEvent(esc); await wait(0.2)
+            print("SELF 38 Esc zamyka Ustawienia: okno widoczne po Esc=\(sw.isVisible)")
+            store.select(category: .all); store.config.viewMode = .grid; _ = store.visible.map { store.thumbnails.image(for: $0) }; await wait(2.0)
+            let px0 = store.thumbnails.maxPixel; let img0 = store.visible.first { $0.kind == .image }.flatMap { store.thumbnails.image(for: $0) }
+            store.data.settings.thumbnailQuality = .low; await wait(0.3)
+            _ = store.visible.map { store.thumbnails.image(for: $0) }; await wait(2.0)
+            let img1 = store.visible.first { $0.kind == .image }.flatMap { store.thumbnails.image(for: $0) }
+            print("SELF 38b jakość miniatur: maxPixel \(px0)→\(store.thumbnails.maxPixel), obraz \(Int(img0?.size.width ?? 0))px→\(Int(img1?.size.width ?? 0))px (ma być mniejszy lub równy 160)")
+            store.data.settings.thumbnailQuality = .normal; await wait(0.3)
         }
         // Zapis na dysk
         store.settings.accent = .violet; store.settings.placement = .rightMiddle
