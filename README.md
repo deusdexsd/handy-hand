@@ -38,4 +38,4 @@ Wewnętrzna nazwa targetu i identyfikator paczki (`MidniteDock`, `com.midnitemed
 ## Uwagi
 
 - Podpis ad-hoc (bez konta deweloperskiego Apple): na innych Macach trzeba aplikację raz zatwierdzić w Ustawieniach systemowych (opisane w instrukcji).
-- Brak pliku licencji — dodaj go przed publikacją, jeśli repozytorium ma być publiczne.
+- Licencja: [MIT](LICENSE).
