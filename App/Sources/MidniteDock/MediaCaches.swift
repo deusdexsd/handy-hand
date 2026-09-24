@@ -38,8 +38,15 @@ actor ThumbGate {
 @MainActor
 final class ThumbnailStore: ObservableObject {
     @Published private(set) var version = 0
-    /// Miniatury w NSCache z limitem: przy tysiącach plików pamięć nie rośnie bez końca (wyrzucone wczytają się ponownie przy przewinięciu).
-    private let cache: NSCache<NSString, NSImage> = { let c = NSCache<NSString, NSImage>(); c.countLimit = 500; return c }()
+    /// Miniatury z twardym limitem (najstarsze wypadają pierwsze): przy tysiącach plików pamięć nie rośnie bez końca.
+    /// Własna struktura zamiast NSCache — NSCache wyrzucał wpisy na własną rękę i wczytywanie zapętlało się (migotanie).
+    private var cache: [String: NSImage] = [:]
+    private var cacheOrder: [String] = []
+    private let cacheLimit = 600
+    private func store(_ img: NSImage, for path: String) {
+        if cache.updateValue(img, forKey: path) == nil { cacheOrder.append(path) }
+        if cacheOrder.count > cacheLimit { cache.removeValue(forKey: cacheOrder.removeFirst()) }
+    }
     private var pending: Set<String> = []
     /// Nieudane miniatury zapamiętujemy: inaczej każda porażka podbijała `version`, widok się odświeżał i ładowanie startowało od nowa w kółko.
     private var failed: Set<String> = []
@@ -52,7 +59,7 @@ final class ThumbnailStore: ObservableObject {
     func hasFailed(_ item: MediaItem) -> Bool { failed.contains(item.path) }
 
     func image(for item: MediaItem) -> NSImage? {
-        if let i = cache.object(forKey: item.path as NSString) { return i }
+        if let i = cache[item.path] { return i }
         guard item.kind != .audio, !failed.contains(item.path), !pending.contains(item.path) else { return nil }
         pending.insert(item.path); attempts[item.path, default: 0] += 1
         let (url, dur, path, isImage) = (item.url, item.duration, item.path, item.kind == .image)
@@ -62,7 +69,7 @@ final class ThumbnailStore: ObservableObject {
             let img = isImage ? Self.renderImage(url, maxPixel: 260) : await Self.renderVideoFrame(url, dur)
             await g.release()
             await MainActor.run { [weak self] in
-                if let img { self?.cache.setObject(img, forKey: path as NSString) } else { self?.failed.insert(path) }
+                if let img { self?.store(img, for: path) } else { self?.failed.insert(path) }
                 self?.pending.remove(path); self?.version += 1
             }
         }

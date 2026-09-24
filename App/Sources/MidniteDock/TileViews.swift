@@ -162,11 +162,10 @@ struct MasonryGrid: View {
                     ForEach(distributed[c], id: \.self) { i in
                         MinimalistTile(store: store, waveforms: waveforms, thumbs: thumbs, item: items[i], height: heights[i]).id(items[i].path)
                     }
-                }.frame(width: cw)
+                }.frame(maxWidth: .infinity)
             }
         }
         .padding(.horizontal, 10).padding(.bottom, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
 }

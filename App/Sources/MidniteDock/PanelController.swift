@@ -206,7 +206,8 @@ final class PanelController: NSObject {
     private func frames() -> (handle: CGRect, body: CGRect, cap: Bool, bottom: Bool, glowRect: CGRect, realNotch: Bool)? {
         guard let m = metrics() else { return nil }
         let s = store.settings
-        let bodySize = CGSize(width: s.expandedWidth, height: s.expandedHeight)
+        // Najmniejsza szerokość, przy której treść (lewy panel + środek + notatki) się mieści — okno nigdy nie jest węższe niż treść.
+        let bodySize = CGSize(width: max(s.expandedWidth, s.notesVisible ? 800 : 580), height: s.expandedHeight)
         if s.placement.isSide {      // uchwyt na lewej/prawej krawędzi, panel obok niego
             let sf = NotchGeometry.sideFrames(m, placement: s.placement, position: s.sidePosition, bodySize: bodySize)
             return (sf.handle, sf.body, true, false, sf.handle, false)
@@ -892,6 +893,16 @@ enum SelfTest {
             store.settings.notesVisible = true; await wait(1.0)
             let f1 = bp.frame
             store.settings.notesVisible = false; await wait(0.6)
+            // Pętla sprzężenia (migotanie): przy notatkach w widoku minimalistycznym szerokość i liczba kolumn muszą się ustabilizować.
+            store.config.viewMode = .minimal; store.select(category: .all)
+            for w in [720.0, 986.0, 720.0] {
+                store.data.settings.expandedWidth = w; store.settings.notesVisible = true; await wait(1.0)
+                var widths: [Int] = []; var cols: [Int] = []; let v0 = store.thumbnails.version
+                for _ in 0..<6 { widths.append(Int(store.contentWidth)); cols.append(store.gridColumns); await wait(0.3) }
+                let fw = bp.frame.width
+                print("SELF 37b notatki+minimal expandedWidth=\(Int(w)): okno=\(Int(fw)) szerokości=\(Set(widths).sorted()) kolumny=\(Set(cols).sorted()) przyrost wersji miniatur=\(store.thumbnails.version - v0) max prób=\(store.thumbnails.attempts.values.max() ?? 0) najczęstszy=\(store.thumbnails.attempts.max { $0.value < $1.value }?.key ?? "-")")
+            }
+            store.settings.notesVisible = false; store.data.settings.expandedWidth = 720; store.config.viewMode = .grid; await wait(0.5)
             print("SELF 37 okno z notatkami: przed=\(f0) po=\(f1) bez zmian=\(f0 == f1) minSize=\(bp.contentMinSize) fitting=\(bp.contentView?.fittingSize ?? .zero)")
         }
         // Import FCPXML + upuszczanie notatek na sidebar

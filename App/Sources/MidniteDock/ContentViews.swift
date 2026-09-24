@@ -37,8 +37,10 @@ struct ContentArea: View {
                 Color.clear
                     .onAppear { store.contentWidth = g.size.width; store.gridColumns = GridNavigation.columns(width: g.size.width, minItem: 148 * store.settings.tileScale) }
                     .onChange(of: g.size.width) { _, w in
+                        // Szerokość służy tylko do policzenia wysokości kafli i liczby kolumn; sam układ nie zależy od niej (bez pętli sprzężenia).
+                        let changed = abs(store.contentWidth - w) > 0.5
                         store.contentWidth = w; store.gridColumns = GridNavigation.columns(width: w, minItem: 148 * store.settings.tileScale)
-                        if store.config.viewMode == .minimal { store.objectWillChange.send() }     // kafle przeliczają wysokości do nowej szerokości kolumny
+                        if changed, store.config.viewMode == .minimal { store.objectWillChange.send() }     // kafle przeliczają wysokości do nowej szerokości kolumny
                     }
                     .onChange(of: store.settings.tileScale) { _, sc in store.gridColumns = GridNavigation.columns(width: g.size.width, minItem: 148 * sc); store.objectWillChange.send() }
             })
