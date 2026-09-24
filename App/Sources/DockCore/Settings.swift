@@ -82,6 +82,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var minimalistHideAudioNames: Bool = true
     /// Rozmiar elementów we wszystkich widokach (suwak): 0.6…1.8, 1 = domyślny.
     public var tileScale: Double = 1
+    /// Przezroczystość tła panelu 0…1: 0,5 = obecny wygląd (szkło), niżej = bardziej kryjące, wyżej = bardziej przezroczyste.
+    public var panelTransparency: Double = 0.5
     /// Proporcje miniatur w siatce (nie w widoku minimalistycznym, który trzyma proporcje materiału).
     public var gridRatio: GridRatio = .square
     /// Panel notatek i zadań po prawej stronie.
@@ -125,7 +127,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var searchMetadata: Bool = false
     public init() {}
 
-    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, stopPlaybackOnCollapse, waveformAutoScale, bigMediaPreview, quickKeys, notchEffect, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, sidebarHidden, minimalistHideAudioNames, tileScale, gridRatio, notesVisible, notesShowAll, menuBarIcon, toolbarOrder, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
+    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, stopPlaybackOnCollapse, waveformAutoScale, bigMediaPreview, quickKeys, notchEffect, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, sidebarHidden, minimalistHideAudioNames, tileScale, panelTransparency, gridRatio, notesVisible, notesShowAll, menuBarIcon, toolbarOrder, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
     /// Tolerancyjne dekodowanie: brakujący klucz (np. po aktualizacji) = wartość domyślna, a nie utrata ustawień.
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -140,6 +142,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         minimalistHideAudioNames = try c.decodeIfPresent(Bool.self, forKey: .minimalistHideAudioNames) ?? def.minimalistHideAudioNames
         menuBarIcon = try c.decodeIfPresent(MenuBarIcon.self, forKey: .menuBarIcon) ?? def.menuBarIcon
         notesShowAll = try c.decodeIfPresent(Bool.self, forKey: .notesShowAll) ?? def.notesShowAll
+        panelTransparency = min(1, max(0, try c.decodeIfPresent(Double.self, forKey: .panelTransparency) ?? def.panelTransparency))
         gridRatio = try c.decodeIfPresent(GridRatio.self, forKey: .gridRatio) ?? def.gridRatio
         notesVisible = try c.decodeIfPresent(Bool.self, forKey: .notesVisible) ?? def.notesVisible
         tileScale = min(1.8, max(0.35, try c.decodeIfPresent(Double.self, forKey: .tileScale) ?? def.tileScale))

@@ -486,6 +486,9 @@ enum SnapshotRunner {
         store.select(category: .klass(.sfx))
         await shot("04g-sfx-scale-dark")
         store.select(category: .all); store.settings.gridRatio = .square; store.config.viewMode = .grid
+        store.settings.panelTransparency = 0.0; await shot("04o-opaque-dark")
+        store.settings.panelTransparency = 1.0; await shot("04p-clear-dark")
+        store.settings.panelTransparency = 0.5
         await shot("04m-grid-square-dark")
         store.settings.gridRatio = .portrait; await shot("04n-grid-45-dark")
         store.settings.gridRatio = .square
@@ -844,8 +847,10 @@ enum SelfTest {
                 panel.makeKeyAndOrderFront(nil)
                 store.search = "abc"; panel.makeFirstResponder(field); await wait(0.6)
                 (panel.firstResponder as? NSTextView)?.selectAll(nil)
+                panel.makeKeyAndOrderFront(nil); await wait(0.3)
+                (panel.firstResponder as? NSTextView)?.selectAll(nil)
                 NSPasteboard.general.clearContents()
-                cmdKey("x", code: 7); await wait(0.2)
+                cmdKey("x", code: 7); await wait(0.3)
                 let cutText = NSPasteboard.general.string(forType: .string)
                 print("SELF 32n ⌘X w polu (NSApp.sendEvent) key=\(panel.isKeyWindow) fr=\(String(describing: type(of: panel.firstResponder))): schowek=\(cutText ?? "nil") pole puste=\(store.search.isEmpty)")
                 cmdKey("v", code: 9); await wait(0.2)

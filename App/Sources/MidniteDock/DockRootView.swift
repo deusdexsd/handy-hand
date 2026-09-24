@@ -38,7 +38,15 @@ struct DockRootView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)     // rozmiar dyktuje okno (rozciągane myszką)
-        .background(VisualEffect(material: .hudWindow))
+        .background {
+            // Suwak w Ustawieniach: poniżej 0,5 dokładamy kryjącą warstwę koloru okna, powyżej przygaszamy samo szkło.
+            // Systemowe „Zmniejsz przezroczystość” działa niezależnie (NSVisualEffectView sam je respektuje).
+            let t = store.settings.panelTransparency
+            ZStack {
+                VisualEffect(material: .hudWindow).opacity(t > 0.5 ? 1 - (t - 0.5) * 1.4 : 1)
+                Color(nsColor: .windowBackgroundColor).opacity(t < 0.5 ? (0.5 - t) * 2 * 0.95 : 0)
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.white.opacity(0.10), lineWidth: 0.5))
         .overlay(ResizeGrips(store: store, atBottom: panel.atBottom))

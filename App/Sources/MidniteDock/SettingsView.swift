@@ -170,6 +170,13 @@ struct AppearanceTab: View {
                     Slider(value: $store.data.settings.tileScale, in: 0.35...1.8)
                     Button(L("Domyślny", "Default")) { store.data.settings.tileScale = 1 }.disabled(store.data.settings.tileScale == 1)
                 }
+                HStack {
+                    Text(L("Przezroczystość panelu", "Panel transparency"))
+                    Text(L("kryjący", "solid")).font(.caption).foregroundStyle(.secondary)
+                    Slider(value: $store.data.settings.panelTransparency, in: 0...1)
+                    Text(L("przezroczysty", "clear")).font(.caption).foregroundStyle(.secondary)
+                    Button(L("Domyślna", "Default")) { store.data.settings.panelTransparency = 0.5 }.disabled(store.data.settings.panelTransparency == 0.5)
+                }
                 Picker(L("Proporcje miniatur w siatce", "Grid thumbnail ratio"), selection: $store.data.settings.gridRatio) {
                     ForEach(GridRatio.allCases, id: \.self) { Text($0.label).tag($0) }
                 }.pickerStyle(.segmented)
