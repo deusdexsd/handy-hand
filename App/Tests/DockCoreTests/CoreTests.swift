@@ -620,6 +620,7 @@ final class IndexerTests: XCTestCase {
         XCTAssertEqual(on.toolbarOrder.first, "pin"); XCTAssertEqual(Set(on.toolbarOrder), Set(ToolbarItemID.defaultOrder)); XCTAssertEqual(on.toolbarOrder.count, ToolbarItemID.defaultOrder.count)
         let old = try JSONDecoder().decode(AppSettings.self, from: Data("{\"mode\":\"hover\"}".utf8))     // stary zapis bez tych kluczy
         XCTAssertFalse(old.sidebarHidden); XCTAssertTrue(old.minimalistHideAudioNames)
+        XCTAssertEqual(old.gridRatio, .square); XCTAssertEqual(GridRatio.portrait.aspect, 0.8); XCTAssertEqual(GridRatio.landscape.aspect, 1.25)
         XCTAssertEqual(old.tileScale, 1); XCTAssertEqual(old.toolbarOrder, ToolbarItemID.defaultOrder)
     }
 

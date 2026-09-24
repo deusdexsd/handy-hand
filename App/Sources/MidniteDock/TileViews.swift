@@ -76,8 +76,8 @@ struct TileView: View {
         let selected = store.selection.contains(item.path)
         let fav = store.isFavorite(item)
         VStack(alignment: .leading, spacing: 6) {
-            ZStack(alignment: .topLeading) {
-                lane
+            Color.clear.aspectRatio(store.settings.gridRatio.aspect, contentMode: .fit).overlay(alignment: .topLeading) { ZStack(alignment: .topLeading) {
+                lane.frame(maxWidth: .infinity, maxHeight: .infinity)
                 if store.copies(item) > 1 {
                     Text("×\(store.copies(item))").font(.system(size: 10, weight: .semibold)).monospacedDigit()
                         .padding(.horizontal, 5).padding(.vertical, 1.5).background(.ultraThinMaterial, in: Capsule())
@@ -95,7 +95,7 @@ struct TileView: View {
                         .accessibilityLabel(fav ? "Usuń z ulubionych" : "Dodaj do ulubionych")
                 }
             }
-            .frame(height: 64 * store.settings.tileScale)
+            }
             .clipShape(RoundedRectangle(cornerRadius: 6))
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.name).font(.system(size: 12, weight: .medium)).lineLimit(1).truncationMode(.middle)
@@ -123,7 +123,7 @@ struct TileView: View {
             WaveformLane(item: item, peaks: waveforms.peaks(for: item), scale: store.waveformScale(for: item),
                          shade: store.shade(item), accentPlayed: nil, accent: accent, ticks: true)
         } else if let img = thumbs.image(for: item) {
-            Image(nsImage: img).resizable().scaledToFit().frame(maxWidth: .infinity).frame(height: 64 * store.settings.tileScale).background(Color.black.opacity(0.22))
+            Color.black.opacity(0.22).overlay { Image(nsImage: img).resizable().scaledToFill() }.clipped()
                 .overlay(alignment: .bottomTrailing) {
                     if item.kind == .video { Text(Fmt.duration(item.duration)).font(.system(size: 10, weight: .medium)).monospacedDigit()
                         .padding(.horizontal, 5).padding(.vertical, 1.5).background(.ultraThinMaterial, in: Capsule()).padding(4) }

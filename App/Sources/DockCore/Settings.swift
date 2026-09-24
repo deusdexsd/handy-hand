@@ -59,6 +59,15 @@ public enum AccentChoice: String, Codable, CaseIterable, Sendable {
     }
 }
 
+/// Proporcje miniatury w widoku siatki (szerokość : wysokość).
+public enum GridRatio: String, Codable, CaseIterable, Sendable {
+    case square, portrait, landscape
+    public var label: String { switch self { case .square: "1:1"; case .portrait: "4:5"; case .landscape: "5:4" } }
+    /// Szerokość / wysokość.
+    public var aspect: Double { switch self { case .square: 1; case .portrait: 0.8; case .landscape: 1.25 } }
+    public init(from d: Decoder) throws { self = GridRatio(rawValue: (try? d.singleValueContainer().decode(String.self)) ?? "") ?? .square }
+}
+
 public struct AppSettings: Codable, Equatable, Sendable {
     public var mode: PanelMode = .hover
     public var watchedBundleIDs: [String] = ["com.apple.FinalCut"]
@@ -73,6 +82,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var minimalistHideAudioNames: Bool = true
     /// Rozmiar elementów we wszystkich widokach (suwak): 0.6…1.8, 1 = domyślny.
     public var tileScale: Double = 1
+    /// Proporcje miniatur w siatce (nie w widoku minimalistycznym, który trzyma proporcje materiału).
+    public var gridRatio: GridRatio = .square
     /// Panel notatek i zadań po prawej stronie.
     public var notesVisible: Bool = false
     /// Panel notatek pokazuje wszystkie notatki (z oznaczeniem miejsca), a nie tylko globalne i te z bieżącej kategorii.
@@ -114,7 +125,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var searchMetadata: Bool = false
     public init() {}
 
-    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, stopPlaybackOnCollapse, waveformAutoScale, bigMediaPreview, quickKeys, notchEffect, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, sidebarHidden, minimalistHideAudioNames, tileScale, notesVisible, notesShowAll, menuBarIcon, toolbarOrder, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
+    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, stopPlaybackOnCollapse, waveformAutoScale, bigMediaPreview, quickKeys, notchEffect, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, sidebarHidden, minimalistHideAudioNames, tileScale, gridRatio, notesVisible, notesShowAll, menuBarIcon, toolbarOrder, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
     /// Tolerancyjne dekodowanie: brakujący klucz (np. po aktualizacji) = wartość domyślna, a nie utrata ustawień.
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -129,6 +140,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         minimalistHideAudioNames = try c.decodeIfPresent(Bool.self, forKey: .minimalistHideAudioNames) ?? def.minimalistHideAudioNames
         menuBarIcon = try c.decodeIfPresent(MenuBarIcon.self, forKey: .menuBarIcon) ?? def.menuBarIcon
         notesShowAll = try c.decodeIfPresent(Bool.self, forKey: .notesShowAll) ?? def.notesShowAll
+        gridRatio = try c.decodeIfPresent(GridRatio.self, forKey: .gridRatio) ?? def.gridRatio
         notesVisible = try c.decodeIfPresent(Bool.self, forKey: .notesVisible) ?? def.notesVisible
         tileScale = min(1.8, max(0.35, try c.decodeIfPresent(Double.self, forKey: .tileScale) ?? def.tileScale))
         toolbarOrder = ToolbarItemID.sanitized(try c.decodeIfPresent([String].self, forKey: .toolbarOrder) ?? def.toolbarOrder)

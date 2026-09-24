@@ -485,6 +485,10 @@ enum SnapshotRunner {
         store.config.viewMode = .grid
         store.select(category: .klass(.sfx))
         await shot("04g-sfx-scale-dark")
+        store.select(category: .all); store.settings.gridRatio = .square; store.config.viewMode = .grid
+        await shot("04m-grid-square-dark")
+        store.settings.gridRatio = .portrait; await shot("04n-grid-45-dark")
+        store.settings.gridRatio = .square
         store.select(category: .all)
         store.newCollection(name: "Projekt Alfa"); if let cid = store.org.collections.last?.id { store.select(category: .collection(cid)) }; store.addNote("Dobrać muzykę do intra"); store.select(category: .all); store.addNote("Zgrać SFX do sceny 3"); store.settings.notesVisible = true
         await shot("04l-notes-dark")

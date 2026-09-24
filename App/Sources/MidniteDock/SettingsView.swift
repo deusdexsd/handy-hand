@@ -170,6 +170,9 @@ struct AppearanceTab: View {
                     Slider(value: $store.data.settings.tileScale, in: 0.35...1.8)
                     Button(L("Domyślny", "Default")) { store.data.settings.tileScale = 1 }.disabled(store.data.settings.tileScale == 1)
                 }
+                Picker(L("Proporcje miniatur w siatce", "Grid thumbnail ratio"), selection: $store.data.settings.gridRatio) {
+                    ForEach(GridRatio.allCases, id: \.self) { Text($0.label).tag($0) }
+                }.pickerStyle(.segmented)
                 Toggle(L("Widok minimalistyczny: ukryj nazwy przy dźwiękach", "Minimalist view: hide names on sounds"), isOn: $store.data.settings.minimalistHideAudioNames)
                     .toggleStyle(.checkbox)
                 Text(L("Widok minimalistyczny to trzeci tryb (lista / siatka / minimalistyczny) pod jedną ikoną w toolbarze. Zostaje sam obraz albo waveform, jak w siatce Pinteresta. Wyłącz to, jeśli chcesz mieć subtelną nazwę na kaflach z dźwiękiem. Ikony toolbaru przestawisz, przytrzymując ⌘ i przeciągając.",
