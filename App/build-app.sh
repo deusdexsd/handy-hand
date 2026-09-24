@@ -19,8 +19,8 @@ cat > $APP/Contents/Info.plist <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>CFBundleIdentifier</key><string>com.midnitemedia.midnitedock</string>
-<key>CFBundleName</key><string>Handy</string>
-<key>CFBundleDisplayName</key><string>Handy</string>
+<key>CFBundleName</key><string>Handy Hand</string>
+<key>CFBundleDisplayName</key><string>Handy Hand</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundleExecutable</key><string>MidniteDock</string>
 <key>CFBundlePackageType</key><string>APPL</string>

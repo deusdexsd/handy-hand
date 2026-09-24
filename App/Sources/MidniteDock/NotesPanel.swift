@@ -14,11 +14,18 @@ struct NotesPanel: View {
             HStack {
                 Text(L("Notatki", "Notes")).font(.system(size: 12, weight: .semibold))
                 Spacer()
-                Picker("", selection: $store.data.settings.notesShowAll) {
-                    Text(L("Tu", "Here")).tag(false)
-                    Text(L("Wszystkie", "All")).tag(true)
-                }.pickerStyle(.segmented).labelsHidden().controlSize(.small).frame(width: 110)
-                    .help(L("Tu: globalne i przypisane do bieżącego widoku. Wszystkie: każda notatka z podpisem, gdzie jest.", "Here: global and assigned to the current view. All: every note, labelled with where it lives."))
+                HStack(spacing: 0) {
+                    ForEach([(false, L("Tu", "Here")), (true, L("Wszystkie", "All"))], id: \.0) { on, title in
+                        let sel = store.settings.notesShowAll == on
+                        Button { store.data.settings.notesShowAll = on } label: {
+                            Text(title).font(.system(size: 10.5, weight: .medium)).padding(.horizontal, 8).padding(.vertical, 3)
+                                .foregroundStyle(sel ? Color.white : Color.secondary)
+                                .background(Capsule().fill(sel ? accent : .clear))
+                        }.buttonStyle(.plain)
+                    }
+                }
+                .padding(2).background(Capsule().fill(Color.primary.opacity(0.08)))
+                .help(L("Tu: globalne i przypisane do bieżącego widoku. Wszystkie: każda notatka z podpisem, gdzie jest.", "Here: global and assigned to the current view. All: every note, labelled with where it lives."))
             }
             .padding(.horizontal, 10).padding(.top, 10).padding(.bottom, 6)
             ScrollView {

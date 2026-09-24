@@ -658,8 +658,19 @@ final class IndexerTests: XCTestCase {
         XCTAssertEqual(r.tags[PathUtil.canonical(real.path)], ["wywiad", "b-roll"])   // słowa kluczowe FCP → tagi
         XCTAssertEqual(r.favorites, [PathUtil.canonical(real.path)])                    // rating „favorite” → ulubione
         XCTAssertTrue(FCPXMLImport.isFCPXML(URL(fileURLWithPath: "/a/b.fcpxmld")))
-        XCTAssertEqual(AppSettings().menuBarIcon, .paw); XCTAssertEqual(MenuBarIcon.allCases.count, 5)
+        XCTAssertEqual(AppSettings().menuBarIcon, .hand); XCTAssertEqual(MenuBarIcon.allCases.count, 5)
+        let oldIcon = try JSONDecoder().decode(AppSettings.self, from: Data("{\"menuBarIcon\":\"paw\"}".utf8))
+        XCTAssertEqual(oldIcon.menuBarIcon, .hand)                  // usunięta łapka wraca do domyślnej
         try? FileManager.default.removeItem(at: tmp)
+    }
+
+    func testMasonryTileHeightsAreDeterministic() {
+        XCTAssertEqual(MasonryLayout.tileHeight(isAudio: true, pixelWidth: nil, pixelHeight: nil, columnWidth: 200), 64)
+        XCTAssertEqual(MasonryLayout.tileHeight(isAudio: false, pixelWidth: 1920, pixelHeight: 1080, columnWidth: 200), 112.5, accuracy: 0.01)
+        XCTAssertEqual(MasonryLayout.tileHeight(isAudio: false, pixelWidth: nil, pixelHeight: nil, columnWidth: 160), 90, accuracy: 0.01)   // bez wymiarów: 16:9
+        XCTAssertEqual(MasonryLayout.tileHeight(isAudio: false, pixelWidth: 100, pixelHeight: 100, columnWidth: 200), 70)                     // mała ikona
+        XCTAssertEqual(MasonryLayout.tileHeight(isAudio: false, pixelWidth: 500, pixelHeight: 5000, columnWidth: 100), 180)                 // ekstremalnie wysoki: przycięty
+        XCTAssertEqual(MasonryLayout.columnWidth(contentWidth: 520, columns: 2), 245)
     }
 
     func testMasonryNavigationStaysInColumnsAndCrossesToNeighbours() {

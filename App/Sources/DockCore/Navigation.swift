@@ -36,10 +36,19 @@ public enum ScaleTicks {
 public enum MasonryLayout {
     public static let spacing = 10.0
 
-    public static func estimatedHeight(isAudio: Bool, pixelWidth: Int?, pixelHeight: Int?, scale: Double = 1) -> Double {
-        guard !isAudio, let w = pixelWidth, let h = pixelHeight, w > 0, h > 0 else { return 64 * scale }
+    /// Szerokość kolumny dla danej szerokości obszaru (padding 10 po bokach, odstępy `spacing`).
+    public static func columnWidth(contentWidth: Double, columns: Int) -> Double {
+        let c = Double(max(1, columns))
+        return max(20, (contentWidth - 20 - (c - 1) * spacing) / c)
+    }
+
+    /// Dokładna wysokość kafla w kolumnie o szerokości `columnWidth`. Kafel dostaje TAKĄ wysokość zawsze (przed i po wczytaniu miniatury),
+    /// więc układ nie skacze — inaczej leniwy stos przeliczał się w kółko i kafle migały.
+    public static func tileHeight(isAudio: Bool, pixelWidth: Int?, pixelHeight: Int?, columnWidth: Double, scale: Double = 1) -> Double {
+        if isAudio { return 64 * scale }
+        guard let w = pixelWidth, let h = pixelHeight, w > 0, h > 0 else { return columnWidth * 0.5625 }      // brak wymiarów: zakładamy 16:9
         if isSmallImage(pixelWidth: w, pixelHeight: h) { return 70 * scale }
-        return min(260, max(70, 160 * Double(h) / Double(w))) * scale
+        return columnWidth * min(1.8, max(0.4, Double(h) / Double(w)))
     }
 
     /// Obrazy mniejsze niż ~160 px (ikony) pokazujemy w naturalnym rozmiarze zamiast rozciągać.

@@ -78,7 +78,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     /// Panel notatek pokazuje wszystkie notatki (z oznaczeniem miejsca), a nie tylko globalne i te z bieżącej kategorii.
     public var notesShowAll: Bool = false
     /// Ikona aplikacji w pasku menu.
-    public var menuBarIcon: MenuBarIcon = .paw
+    public var menuBarIcon: MenuBarIcon = .hand
     /// Kolejność ikon w toolbarze (przeciąganie z ⌘). Puste/nieznane wpisy uzupełnia widok.
     public var toolbarOrder: [String] = ToolbarItemID.defaultOrder
     public var accent: AccentChoice = .system

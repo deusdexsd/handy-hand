@@ -11,7 +11,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var iconWatch: AnyCancellable?
 
     private func applyStatusIcon(_ icon: MenuBarIcon? = nil) {
-        statusItem.button?.image = NSImage(systemSymbolName: (icon ?? store.settings.menuBarIcon).symbol, accessibilityDescription: AppInfo.name)
+        let ic = icon ?? store.settings.menuBarIcon
+        if let sym = ic.symbol {
+            statusItem.button?.image = NSImage(systemSymbolName: sym, accessibilityDescription: AppInfo.name)
+        } else {
+            // HA / HA jedno pod drugim: napis rysowany jako obraz-szablon (dopasowuje się do jasnego/ciemnego paska menu).
+            let img = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { rect in
+                let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 9, weight: .heavy), .foregroundColor: NSColor.black, .kern: 0.4]
+                let s = NSAttributedString(string: "HA", attributes: attrs); let w = s.size().width
+                s.draw(at: NSPoint(x: (rect.width - w) / 2, y: 9)); s.draw(at: NSPoint(x: (rect.width - w) / 2, y: 0)); return true
+            }
+            statusItem.button?.image = img
+        }
         statusItem.button?.image?.isTemplate = true
     }
     var settingsWindow: NSWindow?
@@ -116,8 +127,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             w.contentView = NSHostingView(rootView: SettingsView(store: store))
             settingsWindow = w
                         if let f = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame {
-                // Na środku ekranu, ale trochę niżej niż środek (górna część należy do panelu Handy).
-                w.setFrameOrigin(NSPoint(x: f.midX - w.frame.width / 2, y: f.midY - w.frame.height / 2 - f.height * 0.08))
+                // Na środku ekranu, ale trochę wyżej niż środek — klik w ikonę pasku menu otwiera je i tak.
+                w.setFrameOrigin(NSPoint(x: f.midX - w.frame.width / 2, y: f.midY - w.frame.height / 2 + f.height * 0.08))
             } else { w.center() }
         }
         NSApp.activate(ignoringOtherApps: true)

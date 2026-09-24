@@ -153,18 +153,20 @@ struct MasonryGrid: View {
 
     var body: some View {
         let cols = max(1, store.gridColumns)
-        let hs = items.map { MasonryLayout.estimatedHeight(isAudio: $0.kind == .audio, pixelWidth: $0.pixelWidth, pixelHeight: $0.pixelHeight, scale: store.settings.tileScale) }
-        let distributed = MasonryLayout.distribute(heights: hs, columns: cols).map { $0.map { items[$0] } }
-        HStack(alignment: .top, spacing: 10) {
+        let cw = MasonryLayout.columnWidth(contentWidth: store.contentWidth, columns: cols)
+        let heights = items.map { MasonryLayout.tileHeight(isAudio: $0.kind == .audio, pixelWidth: $0.pixelWidth, pixelHeight: $0.pixelHeight, columnWidth: cw, scale: store.settings.tileScale) }
+        let distributed = MasonryLayout.distribute(heights: heights, columns: cols)
+        HStack(alignment: .top, spacing: MasonryLayout.spacing) {
             ForEach(0..<cols, id: \.self) { c in
-                LazyVStack(spacing: 10) {
-                    ForEach(distributed[c]) { item in
-                        MinimalistTile(store: store, waveforms: waveforms, thumbs: thumbs, item: item).id(item.path)
+                LazyVStack(spacing: MasonryLayout.spacing) {
+                    ForEach(distributed[c], id: \.self) { i in
+                        MinimalistTile(store: store, waveforms: waveforms, thumbs: thumbs, item: items[i], height: heights[i]).id(items[i].path)
                     }
-                }.frame(maxWidth: .infinity)
+                }.frame(width: cw)
             }
         }
         .padding(.horizontal, 10).padding(.bottom, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
 }
@@ -176,6 +178,7 @@ struct MinimalistTile: View {
     @ObservedObject var waveforms: WaveformStore
     @ObservedObject var thumbs: ThumbnailStore
     let item: MediaItem
+    let height: Double
     @Environment(\.dockAccent) private var accent
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pressed = false
@@ -215,35 +218,32 @@ struct MinimalistTile: View {
     }
 
     @ViewBuilder private var content: some View {
-        if item.kind == .audio {
-            WaveformLane(item: item, peaks: waveforms.peaks(for: item), scale: store.waveformScale(for: item),
-                         shade: store.shade(item), accentPlayed: nil, accent: accent, ticks: true)
-                .frame(height: 64 * store.settings.tileScale).background(Color.primary.opacity(0.08))
-                .overlay(alignment: .bottomLeading) {
-                    if !store.settings.minimalistHideAudioNames {
-                        Text(item.name).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle).padding(.horizontal, 7).padding(.bottom, 4)
+        Group {
+            if item.kind == .audio {
+                WaveformLane(item: item, peaks: waveforms.peaks(for: item), scale: store.waveformScale(for: item),
+                             shade: store.shade(item), accentPlayed: nil, accent: accent, ticks: true)
+                    .background(Color.primary.opacity(0.08))
+                    .overlay(alignment: .bottomLeading) {
+                        if !store.settings.minimalistHideAudioNames {
+                            Text(item.name).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle).padding(.horizontal, 7).padding(.bottom, 4)
+                        }
                     }
-                }
-        } else if let img = thumbs.image(for: item) {
-            Group {
+            } else if let img = thumbs.image(for: item) {
                 if MasonryLayout.isSmallImage(pixelWidth: item.pixelWidth, pixelHeight: item.pixelHeight) {
                     // Mała ikona / PNG: w oryginalnym rozmiarze (nie rozciągamy do szerokości kolumny), wyśrodkowana na neutralnym tle.
                     ZStack { Color.primary.opacity(0.08); Image(nsImage: img).interpolation(.high).frame(width: img.size.width, height: img.size.height) }
-                        .frame(height: 70 * store.settings.tileScale)
                 } else {
-                    Image(nsImage: img).resizable().scaledToFit().frame(maxWidth: .infinity).background(Color.black.opacity(0.22))
+                    Color.black.opacity(0.22).overlay { Image(nsImage: img).resizable().scaledToFill() }.clipped()
+                        .overlay(alignment: .bottomTrailing) {
+                            if item.kind == .video { Text(Fmt.duration(item.duration)).font(.system(size: 10, weight: .medium)).monospacedDigit()
+                                .padding(.horizontal, 5).padding(.vertical, 1.5).background(.ultraThinMaterial, in: Capsule()).padding(4) }
+                        }
                 }
+            } else {
+                ZStack { Color.primary.opacity(0.08); Image(systemName: MetaText.icon(item)).foregroundStyle(.secondary) }
             }
-                .overlay(alignment: .bottomTrailing) {
-                    if item.kind == .video { Text(Fmt.duration(item.duration)).font(.system(size: 10, weight: .medium)).monospacedDigit()
-                        .padding(.horizontal, 5).padding(.vertical, 1.5).background(.ultraThinMaterial, in: Capsule()).padding(4) }
-                }
-        } else {
-            // Brak wczytanej miniatury: rezerwujemy miejsce w znanej proporcji, żeby nic nie „skoczyło” po wczytaniu.
-            let ratio: CGFloat = (item.pixelWidth.map(CGFloat.init)).flatMap { w in item.pixelHeight.map { CGFloat($0) }.map { w / $0 } } ?? 1
-            ZStack { Color.primary.opacity(0.08); Image(systemName: MetaText.icon(item)).foregroundStyle(.secondary) }
-                .aspectRatio(ratio, contentMode: .fit)
         }
+        .frame(maxWidth: .infinity).frame(height: height)      // stała wysokość: wczytanie miniatury niczego nie przesuwa
     }
 
     private var dragOverlay: some View {

@@ -50,6 +50,7 @@ final class LibraryStore: ObservableObject {
     @Published var notice: String?
     @Published var scrollTarget: String?
     var gridColumns = 3
+    var contentWidth = 520.0       // szerokość obszaru elementów (mierzona w ContentArea)
 
     let waveforms = WaveformStore()
     let thumbnails = ThumbnailStore()
@@ -444,7 +445,8 @@ final class LibraryStore: ObservableObject {
         case .list: next = GridNavigation.move(from: cur, count: vis.count, columns: 1, d)
         case .grid: next = GridNavigation.move(from: cur, count: vis.count, columns: gridColumns, d)
         case .minimal:
-            let hs = vis.map { MasonryLayout.estimatedHeight(isAudio: $0.kind == .audio, pixelWidth: $0.pixelWidth, pixelHeight: $0.pixelHeight, scale: settings.tileScale) }
+            let cw = MasonryLayout.columnWidth(contentWidth: contentWidth, columns: gridColumns)
+            let hs = vis.map { MasonryLayout.tileHeight(isAudio: $0.kind == .audio, pixelWidth: $0.pixelWidth, pixelHeight: $0.pixelHeight, columnWidth: cw, scale: settings.tileScale) }
             next = MasonryLayout.move(from: cur, heights: hs, columns: gridColumns, d)
         }
         guard let n = next else { return }

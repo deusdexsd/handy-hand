@@ -870,6 +870,19 @@ enum SelfTest {
             print("SELF 34 cofanie: notatka dodana=\(n1) cofnięta=\(u1 && afterU1 == n1 - 1) ulubione cofnięte=\(u2 && afterU2 == favBefore) (było \(favAfter.count)) ponowione=\(r && afterR == favAfter)")
             store.undo(); store.undo()
         }
+        // Miniatury nie mogą się przeładowywać w kółko (efekt stroboskopu): po kilku sekundach każdy plik ma co najwyżej 1 próbę.
+        do {
+            for mode in [ViewMode.grid, .minimal, .list] {
+                store.config.viewMode = mode; store.select(category: .all); store.search = ""
+                _ = store.visible.map { store.thumbnails.image(for: $0) }
+                await wait(3.0)
+                let media = store.visible.filter { $0.kind != .audio }
+                let loaded = media.filter { store.thumbnails.image(for: $0) != nil }.count
+                let maxAttempts = media.map { store.thumbnails.attempts[$0.path] ?? 0 }.max() ?? 0
+                print("SELF 36 miniatury (\(mode.rawValue)): wizualnych=\(media.count) wczytanych=\(loaded) max prób=\(maxAttempts) wersja=\(store.thumbnails.version)")
+            }
+            store.config.viewMode = .grid
+        }
         // Import FCPXML + upuszczanie notatek na sidebar
         do {
             let some = store.items.prefix(2).map(\.path)

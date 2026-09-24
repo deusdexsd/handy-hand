@@ -1,6 +1,6 @@
-# Handy (dawniej MidniteDock/Łapka): status (22.09.2026)
+# Handy Hand (dawniej Handy / MidniteDock / Łapka): status (24.09.2026)
 
-Aplikacja: `App/dist/Handy.app` (release, ad-hoc podpis, aplikacja z paska menu, bez ikony w Docku).
+Aplikacja: `App/dist/Handy Hand.app` (release, ad-hoc podpis, aplikacja z paska menu, bez ikony w Docku).
 Dane użytkownika: `~/Library/Application Support/MidniteDock/` (`userdata.json`, `index.json`).
 Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`); bundle id i katalog danych zostają `MidniteDock` z historycznych powodów.
 
@@ -35,7 +35,7 @@ Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`); bund
 | Esc w wyszukiwarce | Esc wychodzi z pola wyszukiwania (tekst zostaje), potem działają klawisze 1–0, strzałki, spacja; przy otwartym pytaniu Esc idzie do pytania | autotest w prawdziwym oknie (pole w edycji → Esc → klawisz 2 filtruje) |
 | Język | Polski / English w Ustawieniach → Ogólne, przełącza cały interfejs od razu (etykiety enumów w DockCore, teksty w aplikacji przez `L(pl, en)`) | testy dekodowania; wizualny render obu wersji |
 | Ulubione | gwiazdka na kaflu i w liście jest klikalna (dodaje/usuwa bez menu); gwiazdka w toolbarze (obok sortowania) włącza/wyłącza „zawsze na górze” — domyślnie wyłączone, żeby lista nie skakała przy dodawaniu | test sortowania (rdzeń) + autotest |
-| Uruchamianie | „Otwieraj przy logowaniu”: przełącznik w menu Handy na pasku menu i w Ustawieniach → Ogólne (SMAppService, stan trzyma system) | kompiluje się; **rejestracja nie była uruchamiana** (nie zmieniam Twoich elementów logowania) |
+| Uruchamianie | „Otwieraj przy logowaniu”: przełącznik w menu Handy Hand na pasku menu i w Ustawieniach → Ogólne (SMAppService, stan trzyma system) | kompiluje się; **rejestracja nie była uruchamiana** (nie zmieniam Twoich elementów logowania) |
 | Eksport | do folderu „Handy – eksport”: układ Typ i długość albo Kolekcje; kopiuj albo dowiązania; nie nadpisuje | 2 testy |
 | Efekt przy notchu | Ustawienia → Wygląd: Brak (domyślnie) / Łapka. **Podświetlenie usunięte całkowicie** (David: „działało niebo lepiej wcześniej"; cały kod koloru/siły/gradientu/ambientnej poświaty panelu wyrzucony, nie tylko schowany). Stare zapisy z "glow" ładują się jako Łapka. Łapka: SZTYWNE ramię (ok. 15% giętkości = lekkie sprężyste dobieganie), łokieć tuż przy notchu, przedramię i pęk pięciu palców skierowane w stronę kursora, grubość 31→25 pt przy notchu 220 pt; reaguje TYLKO na kursor w promieniu ok. 105 pt (wysuwanie/chowanie wolne, chowanie z opóźnieniem 0,45 s; bark przeskakuje krokami po notchu, dłoń „pacuje” w cyklu ok. 1,15 s); na bocznych krawędziach działa tylko podświetlenie | testy (IK, sprężyna), renderowanie póz, test w prawdziwym oknie z symulowanym kursorem; **ruch na żywo niesprawdzony** |
 | Zakładki | zapisane, nazwane widoki (kategoria + filtry + sortowanie + widok) do jednego kliknięcia; osobne od bieżącego widoku, który zapamiętuje się sam bez zapisywania | testy |
@@ -62,9 +62,19 @@ Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`); bund
 - przeciąganie plików z Findera do panelu, zarządzanie tagami poza dodawaniem,
 - eksport skategoryzowanej biblioteki do struktury folderów (pomysł Davida, na później).
 
+## Zmiany po 22.09 (rundy 27–31)
+
+- Nazwa produktu: **Handy Hand** (Handy było zajęte). Bundle ID i folder danych bez zmian. Nowa ikona aplikacji (`Resources/AppIcon.icns`, z `HandyHand.ico` od Davida, 256 px skalowane w górę).
+- Widoki: lista / siatka / minimalistyczny (jedna ikona), suwak rozmiaru 0.35–1.8, kolejność ikon toolbaru przeciągana z ⌘, stałe wysokości kafli w widoku minimalistycznym (`MasonryLayout.tileHeight`) — koniec z miganiem miniatur.
+- Edycja: ⌘X/C/V/A/Z w polach tekstowych (menu „Edycja” + `performKeyEquivalent`), cofanie do 100 zmian organizacji (`LibraryStore.undo/redo`).
+- Notatki (`NotesPanel.swift`): globalne albo przypięte do kolekcji/folderu/typu, przeciąganie na lewy panel, przełącznik Tu/Wszystkie.
+- Import `.fcpxml`/`.fcpxmld` (`FCPXMLImport`): kolekcja + tagi ze słów kluczowych + ulubione z ratingu.
+- Ikona w pasku menu: 5 wariantów (Palec, Dłoń, HA HA, Fala, Klatki); lewy klik = Ustawienia, prawy = menu.
+- **Niesprawdzone na żywo** (tylko autotesty/zrzuty): przeciąganie notatki myszką, utrzymanie panelu przy menu wystającym poza panel, kliknięcia ikony w pasku menu, wydajność na bardzo dużych bibliotekach.
+
 ## Dystrybucja
 
-`App/make-dmg.sh` buduje uniwersalną aplikację (arm64 + x86_64) i pakuje w `~/Downloads/Handy.dmg` (dysk z Handy i skrótem do Programów). Podpis ad-hoc, bez notaryzacji: na innym Macu trzeba raz zatwierdzić aplikację (Ustawienia → Prywatność i ochrona → Otwórz mimo to albo `xattr -dr com.apple.quarantine`); opisane w `docs/Instrukcja.html`. Uruchomienie na innym Macu **nie było sprawdzone** (nie miałem drugiego komputera); sprawdzone: DMG się montuje, podpis jest poprawny, w środku oba typy procesorów.
+`App/make-dmg.sh` buduje uniwersalną aplikację (arm64 + x86_64) i pakuje w `~/Downloads/Handy Hand.dmg` (dysk z Handy i skrótem do Programów). Podpis ad-hoc, bez notaryzacji: na innym Macu trzeba raz zatwierdzić aplikację (Ustawienia → Prywatność i ochrona → Otwórz mimo to albo `xattr -dr com.apple.quarantine`); opisane w `docs/Instrukcja.html`. Uruchomienie na innym Macu **nie było sprawdzone** (nie miałem drugiego komputera); sprawdzone: DMG się montuje, podpis jest poprawny, w środku oba typy procesorów.
 
 ## Uruchamianie i testy
 
@@ -72,6 +82,6 @@ Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`); bund
 cd Projects/MidniteDock/App
 ./package.sh        # release -> dist/MidniteDock.app
 ./dev-run.sh        # wersja deweloperska na danych testowych (osobny katalog danych)
-swift test --scratch-path ~/Library/Caches/MidniteDockBuild-App   # 65 testów
+swift test --scratch-path ~/Library/Caches/MidniteDockBuild-App   # 66 testów
 ```
 Zmienne środowiskowe dev: `MIDNITEDOCK_DATA_DIR`, `MIDNITEDOCK_DEV_MEDIA`, `MIDNITEDOCK_MUTE`, `MIDNITEDOCK_SHOTS=<katalog>` (renderuje stany do PNG), `MIDNITEDOCK_SELFTEST=1` (autotest logiki panelu).

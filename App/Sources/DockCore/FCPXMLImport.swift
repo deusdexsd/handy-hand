@@ -7,7 +7,7 @@ public enum FCPXMLImport {
         public var name: String            // nazwa projektu (albo eventu, albo pliku) — nazwa nowej kolekcji
         public var existing: [String]      // pliki, które są na dysku
         public var missing: Int            // ścieżki, których na dysku nie ma
-        public var tags: [String: [String]] = [:]     // słowa kluczowe z FCP (Keyword Collections) → tagi Handy
+        public var tags: [String: [String]] = [:]     // słowa kluczowe z FCP (Keyword Collections) → tagi Handy Hand
         public var favorites: [String] = []           // klipy oznaczone w FCP jako Favorite (rating)
     }
 
@@ -93,16 +93,21 @@ public enum FCPXMLImport {
     }
 }
 
-/// Ikona aplikacji w pasku menu macOS (wybór w Ustawieniach).
+/// Ikona aplikacji w pasku menu macOS (wybór w Ustawieniach). `.haha` to napis HA/HA jedno pod drugim (HAndy HAnd).
 public enum MenuBarIcon: String, Codable, CaseIterable, Sendable {
-    case paw, hand, waveform, film, grid
-    public var symbol: String {
-        switch self { case .paw: "pawprint.fill"; case .hand: "hand.raised.fill"; case .waveform: "waveform"; case .film: "film.stack"; case .grid: "square.grid.2x2.fill" }
+    case hand, raised, haha, waveform, film
+    /// Nazwa symbolu SF; nil = ikona rysowana własnym kodem (napis).
+    public var symbol: String? {
+        switch self { case .hand: "hand.point.up.left.fill"; case .raised: "hand.raised.fill"; case .haha: nil; case .waveform: "waveform"; case .film: "film.stack" }
     }
     public var label: String {
         switch self {
-        case .paw: LL("Łapka", "Paw"); case .hand: LL("Dłoń", "Hand"); case .waveform: LL("Fala dźwięku", "Waveform")
-        case .film: LL("Klatki filmu", "Film frames"); case .grid: LL("Siatka", "Grid")
+        case .hand: LL("Palec", "Pointing hand"); case .raised: LL("Dłoń", "Open hand"); case .haha: "HA HA"
+        case .waveform: LL("Fala dźwięku", "Waveform"); case .film: LL("Klatki filmu", "Film frames")
         }
+    }
+    /// Stare zapisy (np. „paw”, „grid”) wracają do ikony domyślnej.
+    public init(from d: Decoder) throws {
+        self = MenuBarIcon(rawValue: (try? d.singleValueContainer().decode(String.self)) ?? "") ?? .hand
     }
 }

@@ -151,7 +151,10 @@ struct AppearanceTab: View {
                         let on = store.data.settings.menuBarIcon == ic
                         Button { store.data.settings.menuBarIcon = ic } label: {
                             VStack(spacing: 4) {
-                                Image(systemName: ic.symbol).font(.system(size: 18)).frame(width: 34, height: 26)
+                                Group {
+                                    if let sym = ic.symbol { Image(systemName: sym).font(.system(size: 18)) }
+                                    else { VStack(spacing: -3) { Text("HA"); Text("HA") }.font(.system(size: 11, weight: .heavy)) }
+                                }.frame(width: 34, height: 26)
                                 Text(ic.label).font(.system(size: 10)).lineLimit(1)
                             }
                             .padding(.horizontal, 8).padding(.vertical, 6)

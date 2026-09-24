@@ -35,8 +35,11 @@ struct ContentArea: View {
             contentBody(vis)
             .background(GeometryReader { g in
                 Color.clear
-                    .onAppear { store.gridColumns = GridNavigation.columns(width: g.size.width, minItem: 148 * store.settings.tileScale) }
-                    .onChange(of: g.size.width) { _, w in store.gridColumns = GridNavigation.columns(width: w, minItem: 148 * store.settings.tileScale) }
+                    .onAppear { store.contentWidth = g.size.width; store.gridColumns = GridNavigation.columns(width: g.size.width, minItem: 148 * store.settings.tileScale) }
+                    .onChange(of: g.size.width) { _, w in
+                        store.contentWidth = w; store.gridColumns = GridNavigation.columns(width: w, minItem: 148 * store.settings.tileScale)
+                        if store.config.viewMode == .minimal { store.objectWillChange.send() }     // kafle przeliczają wysokości do nowej szerokości kolumny
+                    }
                     .onChange(of: store.settings.tileScale) { _, sc in store.gridColumns = GridNavigation.columns(width: g.size.width, minItem: 148 * sc); store.objectWillChange.send() }
             })
             .dropDestination(for: URL.self) { urls, _ in store.addDropped(urls) }   // foldery i pliki z Findera
