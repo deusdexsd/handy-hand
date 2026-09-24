@@ -10,7 +10,7 @@ STAGE="$(mktemp -d)/Handy Hand"
 mkdir -p "$STAGE"
 cp -R "$APP" "$STAGE/Handy Hand.app"
 ln -s /Applications "$STAGE/Applications"
-DMG="$OUT/Handy Hand.dmg"
+DMG="$OUT/handy-hand.dmg"
 rm -f "$DMG"
 hdiutil create -volname "Handy Hand" -srcfolder "$STAGE" -fs HFS+ -format UDZO -ov "$DMG" > /dev/null
 echo "architektury: $(lipo -archs "$STAGE/Handy Hand.app/Contents/MacOS/MidniteDock")"

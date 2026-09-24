@@ -75,7 +75,7 @@ Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`); bund
 
 ## Dystrybucja
 
-`App/make-dmg.sh` buduje uniwersalną aplikację (arm64 + x86_64) i pakuje w `~/Downloads/Handy Hand.dmg` (dysk z Handy i skrótem do Programów). Podpis ad-hoc, bez notaryzacji: na innym Macu trzeba raz zatwierdzić aplikację (Ustawienia → Prywatność i ochrona → Otwórz mimo to albo `xattr -dr com.apple.quarantine`); opisane w `docs/Instrukcja.html`. Uruchomienie na innym Macu **nie było sprawdzone** (nie miałem drugiego komputera); sprawdzone: DMG się montuje, podpis jest poprawny, w środku oba typy procesorów.
+`App/make-dmg.sh` buduje uniwersalną aplikację (arm64 + x86_64) i pakuje w `~/Downloads/handy-hand.dmg` (dysk z Handy i skrótem do Programów). Podpis ad-hoc, bez notaryzacji: na innym Macu trzeba raz zatwierdzić aplikację (Ustawienia → Prywatność i ochrona → Otwórz mimo to albo `xattr -dr com.apple.quarantine`); opisane w `docs/Instrukcja.html`. Uruchomienie na innym Macu **nie było sprawdzone** (nie miałem drugiego komputera); sprawdzone: DMG się montuje, podpis jest poprawny, w środku oba typy procesorów.
 
 ## Uruchamianie i testy
 

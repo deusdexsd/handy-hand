@@ -19,7 +19,7 @@ App/                  aplikacja (SwiftPM: DockCore = logika, MidniteDock = inter
   Resources/          ikona aplikacji i grafiki
   build-app.sh        buduje .app poza iCloudem (~/Library/Caches), podpis ad-hoc
   package.sh          wersja release -> App/dist/Handy Hand.app
-  make-dmg.sh         uniwersalny (Apple Silicon + Intel) build -> Handy Hand.dmg (domyślnie ~/Downloads)
+  make-dmg.sh         uniwersalny (Apple Silicon + Intel) build -> handy-hand.dmg (domyślnie ~/Downloads)
   dev-run.sh          uruchomienie na danych testowych (osobny katalog danych)
 docs/                 instrukcja użytkownika
 ```
@@ -32,7 +32,7 @@ Wymagania: macOS 14+, Xcode / Swift 5.9+.
 cd App
 swift test --scratch-path ~/Library/Caches/MidniteDockBuild-App   # testy jednostkowe
 ./package.sh                                                       # App/dist/Handy Hand.app
-./make-dmg.sh                                                      # ~/Downloads/Handy Hand.dmg
+./make-dmg.sh                                                      # ~/Downloads/handy-hand.dmg
 ```
 
 Wewnętrzna nazwa targetu i identyfikator paczki (`MidniteDock`, `com.midnitemedia.midnitedock`) zostały bez zmian, żeby zmiana nazwy produktu nie odcięła istniejących danych (`~/Library/Application Support/MidniteDock`).
