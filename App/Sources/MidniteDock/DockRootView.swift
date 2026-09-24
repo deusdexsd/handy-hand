@@ -24,15 +24,15 @@ struct DockRootView: View {
         let accent = store.settings.accent.color
         VStack(spacing: 0) {
             ToolbarView(store: store)
-            if !store.settings.sidebarHidden, store.settings.categoryLayout == .chips { ChipsBar(store: store) }
+            if !store.settings.sidebarHidden, store.settings.categoryLayout == .chips { ChipsBar(store: store).coachAnchor("sidebar") }
             FilterBar(store: store)
             HStack(spacing: 0) {
                 if !store.settings.sidebarHidden, store.settings.categoryLayout == .sidebar {
-                    SidebarView(store: store).frame(width: 178)
+                    SidebarView(store: store).frame(width: 178).coachAnchor("sidebar")
                 }
                 VStack(spacing: 0) {
-                    ContentArea(store: store)
-                    PreviewBar(store: store, previewer: store.previewer, thumbs: store.thumbnails)
+                    ContentArea(store: store).coachAnchor("content")
+                    PreviewBar(store: store, previewer: store.previewer, thumbs: store.thumbnails).coachAnchor("previewbar")
                 }
                 if store.settings.notesVisible { NotesPanel(store: store) }
             }
@@ -58,6 +58,7 @@ struct DockRootView: View {
         .animation(reduceMotion ? .easeOut(duration: 0.15) : .spring(response: 0.34, dampingFraction: 1), value: panel.expanded)
         .focusable(false)
         .overlay { PromptOverlay(store: store) }
+        .overlayPreferenceValue(CoachAnchorKey.self) { anchors in CoachOverlay(store: store, anchors: anchors) }
     }
 }
 
@@ -76,9 +77,9 @@ struct ToolbarView: View {
         HStack(spacing: 6) {
             item("sidebar")
             Text(store.categoryTitle).font(.system(size: 13, weight: .semibold)).lineLimit(1).frame(minWidth: 70, alignment: .leading)
-            SearchField(text: $store.search, placeholder: L("Szukaj w: \(store.categoryTitle)", "Search in: \(store.categoryTitle)"))
+            SearchField(text: $store.search, placeholder: L("Szukaj w: \(store.categoryTitle)", "Search in: \(store.categoryTitle)")).coachAnchor("search")
             ForEach(order, id: \.self) { id in
-                item(id)
+                item(id).coachAnchor("tb-\(id)")
                     .allowsHitTesting(!cmdHeld)
                     .overlay { if cmdHeld { reorderHandle(id, order) } }
                     .offset(x: dragID == id ? dragX : 0)

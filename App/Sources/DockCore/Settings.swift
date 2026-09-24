@@ -90,6 +90,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var minimalistHideAudioNames: Bool = true
     /// Rozmiar elementów we wszystkich widokach (suwak): 0.6…1.8, 1 = domyślny.
     public var tileScale: Double = 1
+    /// Przewodnik pierwszego uruchomienia i samouczek „co jest co” już pokazane (nowa instalacja: false; aktualizacja istniejących danych: true).
+    public var onboardingDone: Bool = false
+    public var tourDone: Bool = false
     public var thumbnailQuality: ThumbnailQuality = .normal
     /// Przezroczystość tła panelu 0…1: 0,5 = obecny wygląd (szkło), niżej = bardziej kryjące, wyżej = bardziej przezroczyste.
     public var panelTransparency: Double = 0.5
@@ -136,7 +139,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var searchMetadata: Bool = false
     public init() {}
 
-    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, stopPlaybackOnCollapse, waveformAutoScale, bigMediaPreview, quickKeys, notchEffect, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, sidebarHidden, minimalistHideAudioNames, tileScale, thumbnailQuality, panelTransparency, gridRatio, notesVisible, notesShowAll, menuBarIcon, toolbarOrder, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
+    enum CodingKeys: String, CodingKey { case hotkeySpec, hotkeyOff, finderKey, language, favoritesFirst, searchMetadata, sidePosition, autoplayOnSelect, stopPlaybackOnCollapse, waveformAutoScale, bigMediaPreview, quickKeys, notchEffect, hideDuplicates, strictDuplicates, mode, watchedBundleIDs, placement, virtualNotch, categoryLayout, sidebarHidden, minimalistHideAudioNames, tileScale, onboardingDone, tourDone, thumbnailQuality, panelTransparency, gridRatio, notesVisible, notesShowAll, menuBarIcon, toolbarOrder, accent, sourceTints, waveformScaleSeconds, expandedWidth, expandedHeight }
     /// Tolerancyjne dekodowanie: brakujący klucz (np. po aktualizacji) = wartość domyślna, a nie utrata ustawień.
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -151,6 +154,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         minimalistHideAudioNames = try c.decodeIfPresent(Bool.self, forKey: .minimalistHideAudioNames) ?? def.minimalistHideAudioNames
         menuBarIcon = try c.decodeIfPresent(MenuBarIcon.self, forKey: .menuBarIcon) ?? def.menuBarIcon
         notesShowAll = try c.decodeIfPresent(Bool.self, forKey: .notesShowAll) ?? def.notesShowAll
+        onboardingDone = try c.decodeIfPresent(Bool.self, forKey: .onboardingDone) ?? def.onboardingDone
+        tourDone = try c.decodeIfPresent(Bool.self, forKey: .tourDone) ?? def.tourDone
         thumbnailQuality = try c.decodeIfPresent(ThumbnailQuality.self, forKey: .thumbnailQuality) ?? def.thumbnailQuality
         panelTransparency = min(1, max(0, try c.decodeIfPresent(Double.self, forKey: .panelTransparency) ?? def.panelTransparency))
         gridRatio = try c.decodeIfPresent(GridRatio.self, forKey: .gridRatio) ?? def.gridRatio
@@ -196,7 +201,7 @@ public struct UserData: Codable, Equatable, Sendable {
     public var sources: [Source] = []
     public var org = Organization()
     public var lastConfig = ViewConfig()
-    public var schemaVersion = 3
+    public var schemaVersion = 4
     public init() {}
 
     enum CodingKeys: String, CodingKey { case settings, sources, org, lastConfig, schemaVersion }
@@ -211,7 +216,8 @@ public struct UserData: Codable, Equatable, Sendable {
             if !org.durationRanges.contains(where: { $0.mediaClass == .music }) { org.durationRanges += DurationRange.musicDefaults() }
         }
         if v < 3 { settings.notchEffect = .paw }      // v3: łapka jako efekt domyślny (to o nią prosił David)
-        schemaVersion = 3
+        if v < 4 { settings.onboardingDone = true; settings.tourDone = true }      // v4: przewodnik tylko dla nowych instalacji — istniejący użytkownik go nie dostaje
+        schemaVersion = 4
     }
 }
 

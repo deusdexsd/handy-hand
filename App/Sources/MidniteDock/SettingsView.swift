@@ -31,6 +31,13 @@ struct GeneralTab: View {
                     Text("English").tag(AppLanguage.en)
                 }
             }
+            Section(L("Pomoc", "Help")) {
+                HStack {
+                    Button(L("Przewodnik konfiguracji…", "Setup guide…")) { (NSApp.delegate as? AppDelegate)?.showOnboarding() }
+                    Button(L("Pokaż, co jest co", "Show what is what")) { (NSApp.delegate as? AppDelegate)?.showTour() }
+                }
+                Text(L("Przewodnik pokazuje się sam przy pierwszym uruchomieniu; tu wracasz do niego w każdej chwili.", "The guide shows up on first launch; come back to it here any time.")).font(.caption).foregroundStyle(.secondary)
+            }
             Section(L("Uruchamianie", "Startup")) {
                 Toggle(L("Otwieraj \(AppInfo.name) przy logowaniu do komputera", "Open \(AppInfo.name) at login"), isOn: Binding(get: { loginOn }, set: { on in
                     loginError = LoginItem.set(on); loginOn = LoginItem.isOn

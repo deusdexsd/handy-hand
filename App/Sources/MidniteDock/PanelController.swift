@@ -190,6 +190,7 @@ final class PanelController: NSObject {
                 self.apply(animated: true)
             }
         }
+        store.$tourActive.removeDuplicates().sink { [weak self] on in DispatchQueue.main.async { if on { self?.body.makeKey() }; self?.apply(animated: true); if !on { self?.updateHover() } } }.store(in: &bag)
         store.$dragging.removeDuplicates().sink { [weak self] _ in DispatchQueue.main.async { self?.apply(animated: true) } }.store(in: &bag)
         store.$prompt.sink { [weak self] p in DispatchQueue.main.async { if p != nil { self?.body.makeKey() }; self?.apply(animated: true) } }.store(in: &bag)
         store.$notice.sink { [weak self] _ in DispatchQueue.main.async { self?.apply(animated: true) } }.store(in: &bag)
@@ -298,6 +299,13 @@ final class PanelController: NSObject {
     // MARK: klawiatura
     private func handleKey(_ k: PanelKey) -> Bool {
         guard store.prompt == nil, store.notice == nil else { return false }     // pytanie na wierzchu: klawisze dla niego
+        if store.tourActive {      // samouczek: Enter/→ dalej, Esc kończy; reszta klawiszy nie działa pod przyciemnieniem
+            switch k {
+            case .enter, .right, .space: store.tourNext(count: store.tourAvailable); return true
+            case .escape: store.tourFinish(); return true
+            default: return true
+            }
+        }
         switch k {
         case .space:
             // Jak Quick Look w Finderze: spacja na obrazie/wideo powiększa podgląd (i zamyka go), na dźwięku odtwarza.
@@ -486,6 +494,10 @@ enum SnapshotRunner {
         store.select(category: .klass(.sfx))
         await shot("04g-sfx-scale-dark")
         store.select(category: .all); store.settings.gridRatio = .square; store.config.viewMode = .grid
+        store.select(category: .all); store.config.viewMode = .grid; store.settings.tileScale = 1
+        store.startTour(); await wait(0.4)
+        for i in 0..<12 { store.tourStep = i; await shot("21-tour-\(i)") }
+        store.tourFinish()
         store.settings.panelTransparency = 0.0; await shot("04o-opaque-dark")
         store.settings.panelTransparency = 1.0; await shot("04p-clear-dark")
         store.settings.panelTransparency = 0.5
@@ -546,6 +558,17 @@ enum SnapshotRunner {
             if jump { for _ in 0..<7 { st.sim.spring.step(dt: 1.0 / 60, target: CGPoint(x: shoulder.x + tx, y: shoulder.y + ty)) } }    // poza „w locie”
             st.sim.wants = true; st.sim.extend = 1; st.sim.patting = false; st.sim.shoulderX = CGFloat(sh); st.sim.last = Date().addingTimeInterval(0.0001)
             await viewShot("09c-\(name)", HandleView(showsCap: false, atBottom: false, expanded: false, isPlaying: false, state: st, realNotch: true, anchorSize: CGSize(width: 220, height: 38), effect: .paw).frame(width: 400, height: 188).background(Color(white: 0.62)), 400, 188)
+        }
+        for i in 0..<OnboardingView.count {
+            let hv = NSHostingView(rootView: OnboardingView(store: store, step: i, onFinish: {}, onSkip: {}).environment(\.colorScheme, .dark))
+            hv.frame = NSRect(x: 0, y: 0, width: 680, height: 620)
+            let w = NSWindow(contentRect: hv.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+            w.appearance = NSAppearance(named: .darkAqua); w.contentView = hv; w.orderFrontRegardless()
+            await wait(0.8); hv.layoutSubtreeIfNeeded()
+            let rep = hv.bitmapImageRepForCachingDisplay(in: hv.bounds)!; hv.cacheDisplay(in: hv.bounds, to: rep)
+            let img = NSImage(size: hv.bounds.size); img.lockFocus(); NSColor(white: 0.14, alpha: 1).setFill(); NSRect(origin: .zero, size: hv.bounds.size).fill()
+            rep.draw(in: NSRect(origin: .zero, size: hv.bounds.size)); img.unlockFocus()
+            save(img, "\(dir)/20-onboarding-\(i).png"); w.orderOut(nil)
         }
         await settingsShot("10-set-general", GeneralTab(store: store))
         await settingsShot("11-set-sources", SourcesTab(store: store))

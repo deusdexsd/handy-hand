@@ -169,7 +169,9 @@ final class ClassAndImageTests: XCTestCase {
         let u = UserDataStore(url: url).load()
         XCTAssertEqual(u.org.durationRanges.first { $0.id.uuidString == rid }?.mediaClass, .sfx)
         XCTAssertEqual(u.org.durationRanges.filter { $0.mediaClass == .music }.count, 3)
-        XCTAssertEqual(u.schemaVersion, 3)
+        XCTAssertEqual(u.schemaVersion, 4)
+        XCTAssertTrue(u.settings.onboardingDone && u.settings.tourDone)         // istniejące dane = bez przewodnika
+        XCTAssertFalse(UserData().settings.onboardingDone)                      // nowa instalacja = z przewodnikiem
         XCTAssertEqual(u.settings.notchEffect, .paw)
         // po zapisie i ponownym odczycie nie dokładamy muzyki drugi raz
         UserDataStore(url: url).save(u)

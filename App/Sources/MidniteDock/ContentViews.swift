@@ -45,7 +45,7 @@ struct ContentArea: View {
                     .onChange(of: store.settings.tileScale) { _, sc in store.gridColumns = GridNavigation.columns(width: g.size.width, minItem: 148 * sc); store.objectWillChange.send() }
             })
             .dropDestination(for: URL.self) { urls, _ in store.addDropped(urls) }   // foldery i pliki z Findera
-            if !store.items.isEmpty { SizeSlider(store: store) }     // osobny pasek pod listą: nie zasłania elementów
+            if !store.items.isEmpty { SizeSlider(store: store).coachAnchor("sizeslider") }     // osobny pasek pod listą: nie zasłania elementów
         }
     }
 

@@ -26,6 +26,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem.button?.image?.isTemplate = true
     }
     var settingsWindow: NSWindow?
+    private var onboardingWindow: NSWindow?
+
+    /// Przewodnik pierwszego uruchomienia (przy pierwszym starcie oraz z menu / Ustawień).
+    func showOnboarding() {
+        if let w = onboardingWindow { w.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true); return }
+        let finish = { [weak self] (startTour: Bool) in
+            guard let self else { return }
+            self.store.data.settings.onboardingDone = true
+            self.onboardingWindow?.close(); self.onboardingWindow = nil
+            if startTour { self.store.startTour() }
+        }
+        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 680, height: 620), styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
+        w.titlebarAppearsTransparent = true; w.titleVisibility = .hidden; w.isMovableByWindowBackground = true; w.isReleasedWhenClosed = false
+        w.contentViewController = NSHostingController(rootView: OnboardingView(store: store, onFinish: { finish(true) }, onSkip: { finish(false) }))
+        NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: w, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.store.data.settings.onboardingDone = true; self?.onboardingWindow = nil }     // zamknięcie krzyżykiem = pominięcie
+        }
+        w.center(); onboardingWindow = w
+        NSApp.activate(ignoringOtherApps: true); w.makeKeyAndOrderFront(nil)
+    }
+
+    func showTour() { store.startTour() }
     private var hotkeyWatch: AnyCancellable?
 
     func applicationDidFinishLaunching(_ n: Notification) {
@@ -49,6 +71,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if ProcessInfo.processInfo.environment["MIDNITEDOCK_SELFTEST"] != nil {
             Task { @MainActor in await SelfTest.run(controller: self.controller, store: self.store) }
+        }
+
+        let env = ProcessInfo.processInfo.environment
+        let devRun = env["MIDNITEDOCK_SELFTEST"] != nil || env["MIDNITEDOCK_SHOTS"] != nil || env["MIDNITEDOCK_DEV_MEDIA"] != nil
+        if !store.settings.onboardingDone, !devRun || env["MIDNITEDOCK_ONBOARDING"] != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in self?.showOnboarding() }
         }
 
         // globalny skrót pokaż/ukryj panel (zmiana w Ustawieniach przerejestrowuje go od razu)
@@ -114,6 +142,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         })
         menu.addItem(.separator())
+        menu.addItem(ClosureMenuItem(L("Przewodnik konfiguracji…", "Setup guide…")) { [weak self] in self?.showOnboarding() })
+        menu.addItem(ClosureMenuItem(L("Pokaż, co jest co", "Show what is what")) { [weak self] in self?.showTour() })
         let s = ClosureMenuItem(L("Ustawienia…", "Settings…")) { [weak self] in self?.showSettings() }; s.keyEquivalent = ","
         menu.addItem(s)
         menu.addItem(.separator())

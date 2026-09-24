@@ -45,6 +45,9 @@ final class LibraryStore: ObservableObject {
     @Published var dragging = false
     /// Rozwinięte menu kontekstowe/rozwijane z panelu: jego lista wystaje poza okno, więc kursor „poza panelem” nie może go zwinąć.
     @Published var menuTracking = false
+    /// Samouczek „co jest co”: przyciemnienie panelu z podświetlaniem kolejnych elementów.
+    @Published var tourActive = false
+    @Published var tourStep = 0
     @Published var prompt: PromptRequest?
     @Published var lastError: String?
     @Published var notice: String?
@@ -115,6 +118,12 @@ final class LibraryStore: ObservableObject {
         applyingUndo = true; undoStack.append(data.org); data.org = next; applyingUndo = false
         lastUndoPush = .distantPast; return true
     }
+
+    // MARK: samouczek
+    var tourAvailable = 1        // ile kroków samouczka ma teraz swój element na ekranie (ustawia CoachOverlay)
+    func startTour() { tourStep = 0; tourActive = true }
+    func tourNext(count: Int) { if tourStep + 1 >= count { tourFinish() } else { tourStep += 1 } }
+    func tourFinish() { tourActive = false; tourStep = 0; if !data.settings.tourDone { data.settings.tourDone = true } }
 
     // MARK: notatki
     var visibleNotes: [NoteItem] { settings.notesShowAll ? org.notes : NoteItem.visible(org.notes, category: config.category) }
@@ -241,7 +250,7 @@ final class LibraryStore: ObservableObject {
     }
 
     /// Prompt lub komunikat otwarty albo przeciąganie w toku: panel nie może się zwinąć.
-    var holdsPanelOpen: Bool { dragging || menuTracking || prompt != nil || notice != nil }
+    var holdsPanelOpen: Bool { dragging || menuTracking || tourActive || prompt != nil || notice != nil }
 
     func item(_ path: String) -> MediaItem? { items.first { $0.path == path } }
     func isFavorite(_ i: MediaItem) -> Bool { equivalents([i.path]).contains { org.favorites.contains($0) } }
