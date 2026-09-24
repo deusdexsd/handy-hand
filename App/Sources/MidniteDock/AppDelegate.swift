@@ -74,7 +74,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             statusItem.menu = statusMenu
             statusItem.button?.performClick(nil)
             statusItem.menu = nil
-        } else { showSettings() }
+        } else if let w = settingsWindow, w.isVisible { w.close() }      // drugi lewy klik zamyka Ustawienia
+        else { showSettings() }
     }
 
     func applicationWillTerminate(_ n: Notification) { store.flush() }

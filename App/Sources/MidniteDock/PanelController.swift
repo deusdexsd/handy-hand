@@ -160,7 +160,9 @@ final class PanelController: NSObject {
         super.init()
         handle.ignoresMouseEvents = true
         handle.hasShadow = false
-        body.contentView = NSHostingView(rootView: DockRootView(store: store, panel: state))
+        let bodyHost = NSHostingView(rootView: DockRootView(store: store, panel: state))
+        bodyHost.sizingOptions = []       // rozmiar okna dyktuje kod (frames()), a nie treść SwiftUI: inaczej panel z notatkami rósł i wyjeżdżał spod kursora
+        body.contentView = bodyHost
         body.onKey = { [weak self] k in self?.handleKey(k) ?? false }
         body.canLeaveTextField = { [weak self] in self.map { $0.store.prompt == nil && $0.store.notice == nil } ?? true }
         rebuildHandle()
@@ -835,7 +837,7 @@ enum SelfTest {
                     }
                 }
                 panel.makeKeyAndOrderFront(nil)
-                store.search = "abc"; panel.makeFirstResponder(field); await wait(0.2)
+                store.search = "abc"; panel.makeFirstResponder(field); await wait(0.6)
                 (panel.firstResponder as? NSTextView)?.selectAll(nil)
                 NSPasteboard.general.clearContents()
                 cmdKey("x", code: 7); await wait(0.2)
@@ -882,6 +884,15 @@ enum SelfTest {
                 print("SELF 36 miniatury (\(mode.rawValue)): wizualnych=\(media.count) wczytanych=\(loaded) max prób=\(maxAttempts) wersja=\(store.thumbnails.version)")
             }
             store.config.viewMode = .grid
+        }
+        // Okno panelu nie może zmieniać rozmiaru/położenia po otwarciu notatek (inaczej wychodzi spod kursora i panel się zwija).
+        do {
+            let bp = controller.bodyPanel
+            let f0 = bp.frame
+            store.settings.notesVisible = true; await wait(1.0)
+            let f1 = bp.frame
+            store.settings.notesVisible = false; await wait(0.6)
+            print("SELF 37 okno z notatkami: przed=\(f0) po=\(f1) bez zmian=\(f0 == f1) minSize=\(bp.contentMinSize) fitting=\(bp.contentView?.fittingSize ?? .zero)")
         }
         // Import FCPXML + upuszczanie notatek na sidebar
         do {

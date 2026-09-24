@@ -13,15 +13,15 @@ kbd{background:var(--card);border:1px solid var(--line);border-radius:5px;paddin
 .note{background:var(--card);border-radius:10px;padding:10px 14px;margin:12px 0}
 nav a{color:var(--acc);text-decoration:none;margin-right:12px;font-size:14px}
 </style></head><body><main>
-<h1>Handy Hand</h1><p class="sub">Panel przy notchu dla macOS: Twoja biblioteka dźwięków, wideo i obrazów, z której przeciągasz pliki prosto na oś czasu Final Cut Pro.</p>
-<nav><a href="#start">Start</a><a href="#widoki">Widoki</a><a href="#organizacja">Organizacja</a><a href="#notatki">Notatki</a><a href="#fcp">Import z FCP</a><a href="#skroty">Skróty</a><a href="#ustawienia">Ustawienia</a><a href="#uwagi">Uwagi</a></nav>
+<h1>Handy Hand</h1><p class="sub">Panel przy notchu dla macOS: Twoja biblioteka dźwięków, wideo i obrazów, z której przeciągasz pliki prosto do swojego programu do montażu.</p>
+<nav><a href="#start">Start</a><a href="#widoki">Widoki</a><a href="#organizacja">Organizacja</a><a href="#notatki">Notatki</a><a href="#skroty">Skróty</a><a href="#ustawienia">Ustawienia</a><a href="#uwagi">Uwagi</a></nav>
 
 <h2 id="start">1. Instalacja i pierwsze kroki</h2>
 <ol><li>Otwórz <b>Handy Hand.dmg</b> i przeciągnij aplikację do Programów.</li>
 <li>Aplikacja ma podpis ad-hoc (bez konta deweloperskiego Apple). Przy pierwszym uruchomieniu na innym Macu: <i>Ustawienia systemowe → Prywatność i ochrona → Otwórz mimo to</i> albo w Terminalu <kbd>xattr -dr com.apple.quarantine "/Applications/Handy Hand.app"</kbd>.</li>
 <li>Panel rozwija się, gdy najedziesz kursorem na notch (lub krawędź ekranu, zależnie od ustawień). W pasku menu jest ikona aplikacji: <b>lewy klik = Ustawienia</b>, <b>prawy klik = menu</b> (tryb panelu, pokaż/ukryj, zakończ).</li>
-<li>Dodaj źródła: <b>Dodaj → folder / pliki / bibliotekę FCP</b> albo po prostu przeciągnij je z Findera na panel.</li>
-<li>Przeciągnij kafel na oś czasu FCP. Aplikacja niczego nie czyta z FCP — to droga dysk → FCP (jedyny wyjątek to opcjonalny import eksportu XML, patrz niżej).</li></ol>
+<li>Dodaj źródła: <b>Dodaj → folder / pliki</b> albo po prostu przeciągnij je z Findera na panel.</li>
+<li>Przeciągnij kafel na oś czasu swojego edytora — pliki zostają na dysku, aplikacja niczego w nich nie zmienia.</li></ol>
 
 <h2 id="widoki">2. Widoki, rozmiar, układ</h2>
 <p>Jedna ikona w toolbarze przełącza trzy widoki: <b>lista → siatka → minimalistyczny</b>.</p>
@@ -46,13 +46,7 @@ nav a{color:var(--acc);text-decoration:none;margin-right:12px;font-size:14px}
 <li>Pod tekstem widać, gdzie notatka jest przypisana (klik przenosi w to miejsce). Przełącznik <b>Tu / Wszystkie</b> pokazuje notatki bieżącego widoku albo wszystkie naraz.</li>
 <li>Edycja: dwuklik w tekst. Usuwanie: ×.</li></ul>
 
-<h2 id="fcp">5. Import z Final Cut Pro (.fcpxml)</h2>
-<p>FCP nie udostępnia innym aplikacjom klipów przez przeciąganie ani schowek (<kbd>⌘C</kbd> w FCP działa tylko wewnątrz FCP). Jedyna droga to eksport: w FCP <i>Plik → Eksportuj XML…</i>, a potem wrzuć plik <code>.fcpxml</code> (lub pakiet <code>.fcpxmld</code>) na panel albo użyj <i>Dodaj → Importuj projekt z FCP</i>.</p>
-<ul><li>Powstaje nowa kolekcja o nazwie projektu z plikami, które leżą na dysku.</li>
-<li>Słowa kluczowe klipów stają się tagami, a klipy z oceną Favorite — ulubionymi.</li>
-<li>Nie przenosi znaczników, przycięć ani samego montażu. Pliki, których nie ma na dysku, są tylko policzone w komunikacie.</li></ul>
-
-<h2 id="skroty">6. Skróty klawiszowe</h2>
+<h2 id="skroty">5. Skróty klawiszowe</h2>
 <table><tr><th>Skrót</th><th>Działanie</th></tr>
 <tr><td><kbd>Spacja</kbd></td><td>dźwięk: odtwórz/pauza; obraz i wideo: większy podgląd (jak Quick Look)</td></tr>
 <tr><td><kbd>← ↑ → ↓</kbd></td><td>nawigacja (w widoku minimalistycznym po kolumnach)</td></tr>
@@ -65,10 +59,10 @@ nav a{color:var(--acc);text-decoration:none;margin-right:12px;font-size:14px}
 <tr><td><kbd>Esc</kbd></td><td>wyjście z pola tekstowego</td></tr>
 <tr><td><kbd>⌃⌥⌘L</kbd></td><td>globalny skrót pokaż/ukryj panel (zmienisz lub wyłączysz w Ustawieniach)</td></tr></table>
 
-<h2 id="ustawienia">7. Ustawienia</h2>
-<p>Otwierasz je lewym kliknięciem w ikonę w pasku menu lub zębatką w panelu. Zakładki: <b>Ogólne</b> (język PL/EN, start przy logowaniu, zachowanie panelu, autoodtwarzanie, zatrzymanie po zwinięciu, położenie), <b>Źródła</b>, <b>Wygląd</b> (akcent, efekt przy notchu, waveform, rozmiar elementów, <b>ikona w pasku menu</b>: Palec, Dłoń, HA HA, Fala dźwięku, Klatki filmu), <b>Długości</b>, <b>Słowa kluczowe</b>, <b>Skróty</b>, <b>Eksport</b>.</p>
+<h2 id="ustawienia">6. Ustawienia</h2>
+<p>Otwierasz je lewym kliknięciem w ikonę w pasku menu (drugi klik zamyka) lub zębatką w panelu. Zakładki: <b>Ogólne</b> (język PL/EN, start przy logowaniu, zachowanie panelu, autoodtwarzanie, zatrzymanie po zwinięciu, położenie), <b>Źródła</b>, <b>Wygląd</b> (akcent, efekt przy notchu, waveform, rozmiar elementów, <b>ikona w pasku menu</b>: Palec, Dłoń, HA HA, Fala dźwięku, Klatki filmu), <b>Długości</b>, <b>Słowa kluczowe</b>, <b>Skróty</b>, <b>Eksport</b>.</p>
 
-<h2 id="uwagi">8. Wydajność, dane, ograniczenia</h2>
+<h2 id="uwagi">7. Wydajność, dane, ograniczenia</h2>
 <ul><li>Indeksowanie jest przyrostowe (zmienione pliki, na żywo przez FSEvents). Miniatury mają maks. 260 px i są wczytywane tylko dla widocznych kafli; pamięć podręczna jest ograniczona.</li>
 <li>Dane użytkownika: <code>~/Library/Application Support/MidniteDock</code> (nazwa folderu bez zmian po zmianie nazwy produktu, żeby niczego nie zgubić).</li>
 <li>Aplikacja działa lokalnie, bez internetu i bez kont.</li>

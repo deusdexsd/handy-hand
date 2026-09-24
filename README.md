@@ -1,8 +1,8 @@
 # Handy Hand
 
-Natywny panel dla macOS przy notchu: biblioteka Twoich dźwięków (SFX, muzyka), wideo i obrazów, z której przeciągasz pliki prosto na oś czasu Final Cut Pro. Kierunek: dysk → FCP (jedyny wyjątek: opcjonalny import eksportu `.fcpxml` jako kolekcji).
+Natywny panel dla macOS przy notchu: biblioteka Twoich dźwięków (SFX, muzyka), wideo i obrazów, z której przeciągasz pliki prosto na oś czasu Final Cut Pro. Kierunek: dysk → edytor.
 
-*English:* a native macOS notch-docked media library panel for Final Cut Pro — browse sounds, video and images from disk and drag them onto the timeline. Three view modes (list / grid / minimalist masonry), collections, notes, undo, FCPXML import. Local only, no accounts, no network.
+*English:* a native macOS notch-docked media library panel for Final Cut Pro — browse sounds, video and images from disk and drag them onto the timeline. Three view modes (list / grid / minimalist masonry), collections, notes, undo. Local only, no accounts, no network.
 
 - Instrukcja użytkownika: [`docs/Instrukcja.html`](docs/Instrukcja.html)
 - Stan prac i lista sprawdzonych / niesprawdzonych rzeczy: [`App/STATUS.md`](App/STATUS.md)
