@@ -9,7 +9,7 @@ Natywny panel dla macOS przy notchu: biblioteka Twoich dźwięków (SFX, muzyka)
 ![Przewodnik pierwszego uruchomienia](docs/screenshots/przewodnik.jpg)
 ![Samouczek „co jest co”](docs/screenshots/samouczek.jpg)
 
-- Instrukcja użytkownika: [`docs/Instrukcja.html`](docs/Instrukcja.html)
+- Instrukcja użytkownika: [`docs/Instrukcja.html`](docs/Instrukcja.html) · User guide (English): [`docs/Manual.en.html`](docs/Manual.en.html)
 - Stan prac i lista sprawdzonych / niesprawdzonych rzeczy: [`App/STATUS.md`](App/STATUS.md)
 
 ## Układ repozytorium
