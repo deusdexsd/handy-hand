@@ -301,8 +301,8 @@ final class LibraryStore: ObservableObject {
             let rs = org.durationRanges.filter { $0.mediaClass == cls }.sorted { $0.minSeconds < $1.minSeconds }
             if rs.isEmpty { continue }
             out.append(SidebarSection(id: "dur-\(cls.rawValue)", title: L("Długość · \(cls.label)", "Length · \(cls.label)"), entries: rs.map {
-                var x = e(.duration($0.id), "d\($0.id)", $0.name, classIcons[cls]!, .smart)
-                x.chipTitle = "\(cls.label) · \($0.name)"; return x }))
+                var x = e(.duration($0.id), "d\($0.id)", $0.displayName, classIcons[cls]!, .smart)
+                x.chipTitle = "\(cls.label) · \($0.displayName)"; return x }))
         }
         if !org.keywordRules.isEmpty {
             out.append(SidebarSection(id: "kw", title: L("Słowa kluczowe", "Keywords"), entries: org.keywordRules.map { e(.keyword($0.id), "k\($0.id)", $0.name, "tag", .smart) }))

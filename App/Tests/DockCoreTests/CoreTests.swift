@@ -669,6 +669,14 @@ final class IndexerTests: XCTestCase {
         try? FileManager.default.removeItem(at: tmp)
     }
 
+    func testDurationRangeDisplayNameFollowsLanguage() {
+        let r = DurationRange(name: "Powyżej 3 s", mediaClass: .sfx, minSeconds: 3, maxSeconds: nil, shade: 0.9)
+        UILanguage.current = .en; XCTAssertEqual(r.displayName, "Over 3 s")
+        UILanguage.current = .pl; XCTAssertEqual(r.displayName, "Powyżej 3 s")
+        let custom = DurationRange(name: "Moje krótkie", mediaClass: .sfx, minSeconds: 0, maxSeconds: 1, shade: 0.3)
+        UILanguage.current = .en; XCTAssertEqual(custom.displayName, "Moje krótkie"); UILanguage.current = .pl   // własna nazwa zostaje
+    }
+
     func testMasonryTileHeightsAreDeterministic() {
         XCTAssertEqual(MasonryLayout.tileHeight(isAudio: true, pixelWidth: nil, pixelHeight: nil, columnWidth: 200), 64)
         XCTAssertEqual(MasonryLayout.tileHeight(isAudio: false, pixelWidth: 1920, pixelHeight: 1080, columnWidth: 200), 112.5, accuracy: 0.01)

@@ -76,6 +76,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let env = ProcessInfo.processInfo.environment
         let devRun = env["MIDNITEDOCK_SELFTEST"] != nil || env["MIDNITEDOCK_SHOTS"] != nil || env["MIDNITEDOCK_DEV_MEDIA"] != nil
         if !store.settings.onboardingDone, !devRun || env["MIDNITEDOCK_ONBOARDING"] != nil {
+            // Nowa instalacja startuje w języku systemu (polski, gdy system jest po polsku; w innym razie angielski) — i tak wybierasz go w pierwszym kroku.
+            if !store.settings.onboardingDone, let first = Locale.preferredLanguages.first, !first.hasPrefix("pl") { store.data.settings.language = .en }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in self?.showOnboarding() }
         }
 

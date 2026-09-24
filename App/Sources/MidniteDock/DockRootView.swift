@@ -204,7 +204,7 @@ struct FilterMenu: View {
             }
             Picker(L("Długość", "Length"), selection: Binding(get: { f.durationRangeID }, set: { store.config.filters.durationRangeID = $0 })) {
                 Text(L("Dowolna długość", "Any length")).tag(UUID?.none)
-                ForEach(store.org.durationRanges) { Text("\($0.mediaClass.label) · \($0.name)").tag(UUID?.some($0.id)) }
+                ForEach(store.org.durationRanges) { Text("\($0.mediaClass.label) · \($0.displayName)").tag(UUID?.some($0.id)) }
             }
             Picker(L("Data", "Date"), selection: Binding(get: { f.withinDays }, set: { store.config.filters.withinDays = $0 })) {
                 Text(L("Dowolna data", "Any date")).tag(Int?.none)
@@ -278,7 +278,7 @@ struct FilterBar: View {
             HStack(spacing: 6) {
                 if let k = f.kind { chip(k.label) { store.config.filters.kind = nil } }
                 if let c = f.klass { chip(c.label) { store.config.filters.klass = nil } }
-                if let r = f.durationRangeID.flatMap({ id in store.org.durationRanges.first { $0.id == id } }) { chip(r.name) { store.config.filters.durationRangeID = nil } }
+                if let r = f.durationRangeID.flatMap({ id in store.org.durationRanges.first { $0.id == id } }) { chip(r.displayName) { store.config.filters.durationRangeID = nil } }
                 if let d = f.withinDays { chip(L("Ostatnie \(d) dni", "Last \(d) days")) { store.config.filters.withinDays = nil } }
                 if let t = f.tag { chip("#\(t)") { store.config.filters.tag = nil } }
                 Button(L("Wyczyść", "Clear")) { store.config.filters = .none }.buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(.secondary)

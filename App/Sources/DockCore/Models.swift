@@ -97,20 +97,27 @@ public struct DurationRange: Identifiable, Hashable, Codable, Sendable {
 
     public func contains(_ d: Double) -> Bool { d >= minSeconds && (maxSeconds.map { d < $0 } ?? true) }
 
-    public static func autoName(min: Double, max: Double?) -> String {
+    public static func autoName(min: Double, max: Double?, lang: AppLanguage = UILanguage.current) -> String {
+        let pl = lang == .pl
         func f(_ x: Double) -> String {
             if x >= 60, x.truncatingRemainder(dividingBy: 60) == 0 { return "\(Int(x / 60)) min" }
-            let n = x == x.rounded() ? "\(Int(x))" : String(format: "%.1f", x).replacingOccurrences(of: ".", with: ",")
+            let n = x == x.rounded() ? "\(Int(x))" : String(format: "%.1f", x).replacingOccurrences(of: ".", with: pl ? "," : ".")
             return "\(n) s"
         }
         switch (min, max) {
-        case (0, let m?): return "Do \(f(m))"
+        case (0, let m?): return "\(pl ? "Do" : "Up to") \(f(m))"
         case (let a, let m?):
             let mins = a >= 60 && m >= 60 && a.truncatingRemainder(dividingBy: 60) == 0 && m.truncatingRemainder(dividingBy: 60) == 0
             if mins { return "\(Int(a / 60))–\(Int(m / 60)) min" }
             return "\(f(a).replacingOccurrences(of: " s", with: ""))–\(f(m))"
-        case (let a, nil): return "Powyżej \(f(a))"
+        case (let a, nil): return "\(pl ? "Powyżej" : "Over") \(f(a))"
         }
+    }
+
+    /// Nazwa do wyświetlania: przedział nazwany automatycznie (nie zmieniony ręcznie) tłumaczy się na aktualny język; własne nazwy zostają.
+    public var displayName: String {
+        name == Self.autoName(min: minSeconds, max: maxSeconds, lang: .pl) || name == Self.autoName(min: minSeconds, max: maxSeconds, lang: .en)
+            ? Self.autoName(min: minSeconds, max: maxSeconds) : name
     }
 
     public static func musicDefaults() -> [DurationRange] {

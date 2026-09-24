@@ -83,6 +83,6 @@ Nazwa produktu jest w jednym miejscu (`Sources/MidniteDock/AppInfo.swift`); bund
 cd Projects/MidniteDock/App
 ./package.sh        # release -> dist/MidniteDock.app
 ./dev-run.sh        # wersja deweloperska na danych testowych (osobny katalog danych)
-swift test --scratch-path ~/Library/Caches/MidniteDockBuild-App   # 66 testów
+swift test --scratch-path ~/Library/Caches/MidniteDockBuild-App   # 67 testów
 ```
 Zmienne środowiskowe dev: `MIDNITEDOCK_DATA_DIR`, `MIDNITEDOCK_DEV_MEDIA`, `MIDNITEDOCK_MUTE`, `MIDNITEDOCK_SHOTS=<katalog>` (renderuje stany do PNG), `MIDNITEDOCK_SELFTEST=1` (autotest logiki panelu).

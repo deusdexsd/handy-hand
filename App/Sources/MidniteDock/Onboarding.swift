@@ -13,7 +13,7 @@ struct OnboardingView: View {
     @State private var forward = true
     @State private var loginOn = LoginItem.isOn
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    static let count = 6
+    static let count = 7
 
     init(store: LibraryStore, step: Int = 0, onFinish: @escaping () -> Void, onSkip: @escaping () -> Void) {
         self.store = store; self._step = State(initialValue: step); self.onFinish = onFinish; self.onSkip = onSkip
@@ -63,11 +63,12 @@ struct OnboardingView: View {
 
     @ViewBuilder private var page: some View {
         switch step {
-        case 0: welcome
-        case 1: panelPage
-        case 2: sourcesPage
-        case 3: viewsPage
-        case 4: lookPage
+        case 0: languagePage
+        case 1: welcome
+        case 2: panelPage
+        case 3: sourcesPage
+        case 4: viewsPage
+        case 5: lookPage
         default: donePage
         }
     }
@@ -79,6 +80,29 @@ struct OnboardingView: View {
             Text(title).font(.system(size: 24, weight: .bold)).multilineTextAlignment(.center)
             Text(subtitle).font(.system(size: 13)).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 520)
         }.padding(.top, 18)
+    }
+
+    /// Krok 1: wybór języka (zapisywany od razu; cały przewodnik, samouczek i Ustawienia od razu przechodzą na wybrany język).
+    private var languagePage: some View {
+        VStack(spacing: 18) {
+            header("globe", .blue, "Język / Language", "Wybierz język aplikacji. Zmienisz go później w Ustawieniach → Ogólne.\nChoose the app language. You can change it later in Settings → General.")
+            HStack(spacing: 14) {
+                ForEach([(AppLanguage.pl, "Polski", "🇵🇱"), (AppLanguage.en, "English", "🇬🇧")], id: \.0) { lang, name, flag in
+                    let on = store.settings.language == lang
+                    Button { store.data.settings.language = lang } label: {
+                        VStack(spacing: 8) {
+                            Text(flag).font(.system(size: 34))
+                            Text(name).font(.system(size: 15, weight: .semibold))
+                        }
+                        .foregroundStyle(on ? Color.white : Color.primary)
+                        .frame(maxWidth: .infinity, minHeight: 120)
+                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(on ? AnyShapeStyle(accent.gradient) : AnyShapeStyle(Color.primary.opacity(0.06))))
+                        .contentShape(Rectangle())
+                    }.buttonStyle(.plain).accessibilityAddTraits(on ? .isSelected : [])
+                }
+            }.padding(.horizontal, 90)
+            Spacer(minLength: 0)
+        }
     }
 
     private var welcome: some View {
@@ -219,6 +243,7 @@ struct OnboardingView: View {
         VStack(spacing: 14) {
             header("checkmark.seal.fill", .green, L("Gotowe", "All set"), L("Oto Twoje ustawienia. Wszystko zmienisz później w Ustawieniach. Zaraz pokażę, co jest gdzie.", "Here are your settings. You can change everything later in Settings. Next I'll show you what is where."))
             VStack(spacing: 8) {
+                summary(L("Język", "Language"), store.settings.language == .pl ? "Polski" : "English", true)
                 summary(L("Miejsce panelu", "Panel placement"), store.settings.placement.label, true)
                 summary(L("Zachowanie", "Behavior"), store.settings.mode.label, true)
                 summary(L("Źródła", "Sources"), store.sources.isEmpty ? L("jeszcze brak — dodasz w panelu", "none yet — add them in the panel") : L("\(store.sources.count), plików: \(store.items.count)", "\(store.sources.count), files: \(store.items.count)"), !store.sources.isEmpty)
